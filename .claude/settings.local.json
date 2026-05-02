@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python3 -c ' *)",
       "Bash(node --check /tmp/_combined.js)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)"
     ]
   }
 }
