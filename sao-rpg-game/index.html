@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAO RPG Habit Tracker</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/quest.css">
+<link rel="stylesheet" href="css/character.css">
+<link rel="stylesheet" href="css/skills.css">
+<link rel="stylesheet" href="css/battle.css">
+<style>
+/* NOTE: base.css 已包含設計 Token、Reset、頁面殼、bar、divider、header、collapsible、scanline、toast。
+ *       下面這個 inline <style> 之後會逐步抽到 layout.css / quest.css / character.css /
+ *       battle.css / components.css。Phase 1 階段這裡仍含其餘規則。 */
+/* 屬性加減列 */
+/* 確認按鈕 */
+/* ── 裝備/技能 合併卡片 ── */
+.gear-card{border:1px solid var(--border);background:var(--bg2);padding:var(--s4);margin-bottom:var(--s3);overflow:hidden;}
+.gear-tabs{display:flex;margin-bottom:var(--s4);position:relative;overflow:hidden;}
+.gear-tab{flex:1;padding:var(--s3) 0;font-family:var(--font-mono);font-size:11px;letter-spacing:3px;text-align:center;cursor:pointer;position:relative;z-index:1;transition:color .2s;user-select:none;}
+.gear-tab.equip-tab{color:rgba(255,102,51,.45);}
+.gear-tab.equip-tab.active{color:var(--orange);}
+.gear-tab.skill-tab{color:rgba(119,85,255,.45);}
+.gear-tab.skill-tab.active{color:#aa88ff;}
+/* 斜線分隔 */
+.gear-tabs::after{content:'';position:absolute;left:50%;top:10%;bottom:10%;width:1.5px;background:linear-gradient(to bottom right,transparent 30%,rgba(255,255,255,.18) 50%,transparent 70%);transform:skewX(-15deg);}
+/* 底部指示線 */
+.gear-tab::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:1.5px;transition:opacity .2s,box-shadow .2s;}
+.gear-tab.equip-tab::after{background:var(--orange);box-shadow:0 0 8px var(--orange);opacity:0;}
+.gear-tab.equip-tab.active::after{opacity:1;}
+.gear-tab.skill-tab::after{background:#aa88ff;box-shadow:0 0 8px #aa88ff;opacity:0;}
+.gear-tab.skill-tab.active::after{opacity:1;}
+/* 面板 */
+.gear-panel{display:none;}
+.gear-panel.active{display:block;animation:pageIn .2s ease both;}
+/* 裝備格 2×4 */
+.equip-grid-v{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);}
+.equip-col{display:flex;flex-direction:column;gap:var(--s2);min-width:0;}
+.equip-slot-wrap{display:flex;flex-direction:column;gap:3px;}
+.equip-slot{border:1px solid rgba(255,102,51,.25);background:rgba(3,8,15,.8);height:72px;display:flex;flex-direction:row;align-items:center;gap:var(--s3);padding:0 var(--s3);cursor:pointer;position:relative;overflow:hidden;transition:border-color .15s;}
+.equip-slot::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--orange);box-shadow:0 0 5px var(--orange);opacity:.4;}
+.equip-slot.empty::after{content:'';position:absolute;top:0;bottom:0;width:40px;background:linear-gradient(90deg,transparent,rgba(255,102,51,.07),transparent);animation:escan 3s ease-in-out infinite;}
+@keyframes escan{0%,100%{left:-40px}50%{left:100%}}
+.equip-slot.equipped{border-color:rgba(255,102,51,.55);box-shadow:inset 0 0 12px rgba(255,102,51,.08);}
+.equip-slot.equipped::before{opacity:1;}
+.equip-slot:active{background:rgba(255,102,51,.06);}
+.equip-hex{flex-shrink:0;}
+.equip-hex-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.equip-info{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.equip-slot-name{font-family:var(--font-mono);font-size:10px;color:#ff9966;letter-spacing:.5px;line-height:1.3;}
+.equip-item-name{font-family:var(--font-mono);font-size:11px;color:#ffcc99;letter-spacing:.5px;text-shadow:0 0 6px rgba(255,102,51,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.equip-stat{font-family:var(--font-mono);font-size:11px;color:#ff9966;letter-spacing:1px;margin-top:2px;}
+/* 技能槽 */
+.slots-list{display:flex;flex-direction:column;gap:var(--s2);}
+.slot-strip{display:flex;align-items:center;gap:var(--s3);height:38px;padding:0 var(--s3);border:1px solid rgba(119,85,255,.14);background:rgba(3,8,15,.7);position:relative;overflow:hidden;cursor:pointer;}
+.slot-strip::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--purple);box-shadow:0 0 5px var(--purple);}
+.slot-strip.locked{border-color:rgba(255,255,255,.04);opacity:.3;cursor:default;}
+.slot-strip.locked::before{background:#2a4a62;box-shadow:none;}
+.slot-strip.unlocked.empty-slot::after{content:'';position:absolute;top:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,rgba(119,85,255,.07),transparent);animation:sscan 3s ease-in-out infinite;}
+@keyframes sscan{0%,100%{left:-60px}50%{left:100%}}
+.slot-num{font-family:var(--font-mono);font-size:11px;color:#aa88ff;letter-spacing:1px;width:52px;flex-shrink:0;white-space:nowrap;}
+.slot-strip.locked .slot-num{color:#5a7a96;}
+.slot-bar{flex:1;height:2px;background:rgba(119,85,255,.14);position:relative;}
+.slot-bar::after{content:'';position:absolute;left:0;top:0;bottom:0;width:30%;background:linear-gradient(90deg,var(--purple),transparent);}
+.slot-strip.locked .slot-bar{background:rgba(255,255,255,.04);}
+.slot-strip.locked .slot-bar::after,.slot-strip.has-skill .slot-bar::after{display:none;}
+.slot-strip.has-skill .slot-bar{display:none;}
+.slot-status{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;flex-shrink:0;}
+.slot-strip.unlocked .slot-status{color:#aa88ff;}
+.slot-strip.locked .slot-status{color:#5a7a96;}
+.slot-strip.has-skill .slot-status{color:#dd99ff;}
+.next-hint{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);text-align:center;margin-top:var(--s3);}
+.streak-card{border:1px solid rgba(0,255,204,.18);background:rgba(0,255,204,.04);padding:var(--s4);margin-bottom:var(--s3);display:flex;align-items:center;gap:var(--s3);}
+.streak-num{font-family:var(--font-mono);font-size:36px;color:var(--cyan);line-height:1;text-shadow:0 0 12px rgba(0,255,204,.4);flex-shrink:0;}
+.streak-title{font-family:var(--font-mono);font-size:11px;color:var(--cyan);letter-spacing:2px;}
+.streak-sub{font-family:var(--font-zh);font-size:12px;color:var(--text-sub);margin-top:var(--s1);}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);margin-bottom:var(--s3);}
+.stat-box{border:1px solid rgba(0,200,255,.14);background:rgba(3,8,15,.7);padding:var(--s3) var(--s2);text-align:center;}
+.stat-val{font-family:var(--font-mono);font-size:22px;color:var(--blue);line-height:1;}
+.stat-val.good{color:var(--cyan);}
+.stat-lbl{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);letter-spacing:1px;margin-top:var(--s1);}
+.view-tabs{display:flex;gap:var(--s2);margin-bottom:var(--s4);}
+.view-tab{flex:1;padding:var(--s2);border:1px solid var(--border);background:rgba(3,8,15,.7);font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--text-sub);text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.view-tab.active{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+.view-tab.active::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--blue);box-shadow:0 0 8px var(--blue);}
+.stats-card{border:1px solid var(--border);background:var(--bg2);padding:var(--s4);margin-bottom:var(--s3);}
+.heat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s3);font-family:var(--font-mono);font-size:12px;letter-spacing:3px;color:var(--blue);text-transform:uppercase;}
+.heat-left{display:flex;align-items:center;gap:var(--s2);}
+.heat-left::before{content:'';display:inline-block;width:12px;height:1px;background:var(--blue);box-shadow:0 0 6px var(--blue);}
+.heat-nav{display:flex;align-items:center;gap:var(--s2);}
+.nav-btn{cursor:pointer;padding:2px var(--s2);border:1px solid #1a3a5a;color:var(--text-sub);font-family:var(--font-mono);font-size:14px;}
+.nav-period{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);min-width:70px;text-align:center;}
+.hcell{display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;border:1px solid transparent;font-family:var(--font-mono);font-weight:bold;}
+.hcell:hover{transform:scale(1.08);z-index:2;}
+.bg-p0{background:var(--p0);border-color:rgba(255,255,255,.04);}
+.bg-p1{background:var(--p1);border-color:rgba(119,85,255,.38);}
+.bg-p2{background:var(--p2);border-color:rgba(119,85,255,.65);box-shadow:0 0 5px rgba(119,85,255,.25);}
+.bg-p3{background:var(--p3);border-color:#7755ff;box-shadow:0 0 8px rgba(119,85,255,.45);}
+.txt-full{color:var(--cyan);text-shadow:0 0 6px rgba(0,255,204,.6);}
+.txt-part{color:rgba(255,255,255,.75);}
+.txt-none{color:rgba(255,255,255,.22);}
+.week-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--s1);margin-bottom:var(--s1);}
+.wlbl{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);text-align:center;}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--s1);}
+.wday-cell{aspect-ratio:1;font-size:16px;}
+.today-ring{outline:2px solid var(--blue);outline-offset:1px;}
+.month-labels{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;}
+.mlbl{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);text-align:center;}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.mcell{aspect-ratio:1;font-size:13px;}
+.mcell.empty{background:transparent;border-color:transparent;cursor:default;}
+.mcell.empty:hover{transform:none;}
+.year-container{width:100%;}
+.year-row{display:flex;align-items:center;gap:var(--s2);margin-bottom:3px;}
+.year-mlbl{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);width:20px;flex-shrink:0;text-align:right;}
+.year-cells{display:grid;grid-template-columns:repeat(31,1fr);gap:2px;flex:1;}
+.ycell{aspect-ratio:1;border-radius:1px;cursor:pointer;transition:all .15s;border:1px solid transparent;}
+.ycell.empty-y{background:transparent;border-color:transparent;cursor:default;}
+.ycell:not(.empty-y):hover{transform:scale(1.3);z-index:2;}
+.today-y{outline:1px solid var(--blue);}
+.legend{margin-top:var(--s3);display:flex;flex-direction:column;gap:var(--s1);}
+.legend-row{display:flex;align-items:center;gap:var(--s2);}
+.legend-lbl{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);width:70px;}
+.legend-cells{display:flex;gap:3px;align-items:center;}
+.legend-cell{width:12px;height:12px;border-radius:1px;}
+.legend-sep{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);margin:0 2px;}
+.type-tabs{display:flex;gap:var(--s2);margin-bottom:var(--s5);}
+.type-tab{flex:1;padding:var(--s3);border:1px solid var(--border);background:rgba(3,8,15,.7);font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--text-sub);text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.type-tab.active{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+.type-tab.active::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--blue);box-shadow:0 0 8px var(--blue);}
+.type-tab.timed.active{border-color:var(--orange);color:var(--orange);background:rgba(255,102,51,.1);}
+.type-tab.timed.active::before{background:var(--orange);box-shadow:0 0 8px var(--orange);}
+.form-card{border:1px solid var(--border);background:var(--bg2);padding:var(--s5);margin-bottom:var(--s3);}
+.form-field{margin-bottom:var(--s4);}
+.field-label{font-family:var(--font-mono);font-size:13px;letter-spacing:2px;color:var(--text-sub);margin-bottom:var(--s2);display:flex;align-items:center;gap:var(--s2);}
+.field-label::before{content:'';display:inline-block;width:8px;height:1px;background:var(--blue);box-shadow:0 0 4px var(--blue);}
+.field-input{width:100%;background:rgba(3,8,15,.8);border:1px solid rgba(0,200,255,.18);color:var(--text);padding:var(--s3);font-family:var(--font-zh);font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s;}
+.field-input:focus{border-color:var(--blue);box-shadow:0 0 10px rgba(0,200,255,.25);}
+.field-input.orange-field{border-color:rgba(255,102,51,.3);}
+.field-input.orange-field:focus{border-color:var(--orange);box-shadow:0 0 10px rgba(255,102,51,.3);}
+.field-input::placeholder{color:var(--text-dim);font-size:13px;}
+.attr-preview{display:none;margin-top:var(--s2);padding:var(--s2) var(--s3);border:1px solid rgba(0,200,255,.14);background:rgba(0,200,255,.04);font-family:var(--font-mono);font-size:11px;color:var(--text-sub);align-items:center;gap:var(--s2);}
+.attr-preview.show{display:flex;}
+.attr-tag{font-size:11px;padding:2px var(--s2);border:1px solid;letter-spacing:1px;}
+.date-input{width:100%;background:rgba(3,8,15,.8);border:1px solid rgba(255,102,51,.22);color:var(--text);padding:var(--s3);font-family:var(--font-mono);font-size:13px;outline:none;color-scheme:dark;}
+.date-input:focus{border-color:var(--orange);}
+.penalty-preview{margin-top:var(--s2);padding:var(--s2) var(--s3);border:1px solid #ff2244;background:rgba(255,34,68,.1);font-family:var(--font-zh);font-size:12px;color:#ff4466;display:flex;align-items:center;gap:var(--s2);box-shadow:0 0 8px rgba(255,34,68,.2);}
+.repeat-preset{display:flex;gap:var(--s2);margin-bottom:var(--s2);}
+.preset-btn{padding:var(--s1) var(--s3);border:1px solid rgba(0,200,255,.14);background:transparent;font-family:var(--font-zh);font-size:12px;color:var(--text-sub);cursor:pointer;}
+.preset-btn.active-preset{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+.repeat-row{display:flex;gap:var(--s1);}
+.day-btn{flex:1;padding:var(--s2) 0;text-align:center;border:1px solid rgba(0,200,255,.18);background:rgba(3,8,15,.7);font-family:var(--font-zh);font-size:12px;color:var(--text-sub);cursor:pointer;user-select:none;}
+.day-btn.selected{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+.submit-btn{width:100%;padding:var(--s4);background:transparent;border:1px solid var(--blue);color:var(--blue);font-family:var(--font-mono);font-size:11px;letter-spacing:3px;cursor:pointer;position:relative;margin-top:var(--s1);}
+.submit-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--blue);box-shadow:0 0 8px var(--blue);}
+.submit-btn.timed-btn{border-color:var(--orange);color:var(--orange);}
+.submit-btn.timed-btn::before{background:var(--orange);box-shadow:0 0 8px var(--orange);}
+/* 模式切換 */
+.mode-tabs{display:flex;gap:var(--s1);margin-bottom:var(--s3);}
+.mode-tab{flex:1;padding:var(--s2) 0;border:1px solid rgba(0,200,255,.18);background:transparent;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:var(--text-sub);text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.mode-tab.active{border-color:var(--blue);color:var(--blue);}
+.mode-tab.active::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--blue);box-shadow:0 0 8px var(--blue);}
+.mode-tab-orange{border-color:rgba(255,102,51,.25);color:rgba(255,102,51,.75);}
+.mode-tab-orange.active{border-color:var(--orange);color:var(--orange);}
+.mode-tab-orange.active::before{background:var(--orange);box-shadow:0 0 8px var(--orange);}
+.mode-tab-orange:not(.active){color:rgba(255,102,51,.75);}
+/* 次數設定 */
+.count-row{display:flex;align-items:center;gap:var(--s3);}
+.count-btn{width:32px;height:32px;border:1px solid rgba(0,200,255,.25);background:transparent;color:var(--blue);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.count-display{font-family:var(--font-mono);font-size:22px;color:#fff;min-width:36px;text-align:center;}
+.count-max{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);}
+/* 次數方格（Quest頁） */
+.task-counts{display:flex;flex-wrap:nowrap;gap:2px;margin-top:var(--s2);}
+.count-cell{width:calc((100% - 46px) / 24);height:10px;flex-shrink:0;border:1px solid rgba(119,85,255,.3);background:transparent;}
+.count-cell.filled{background:var(--purple);border-color:var(--purple);box-shadow:0 0 3px rgba(119,85,255,.5);}
+/* 完成度設定 */
+.completion-fields{display:flex;gap:var(--s2);}
+.completion-field{flex:1;}
+.mini-label{font-family:var(--font-mono);font-size:10px;color:var(--text-sub);letter-spacing:1px;margin-bottom:var(--s1);}
+.mini-input{width:100%;background:rgba(3,8,15,.8);border:1px solid rgba(0,200,255,.18);color:var(--text);padding:var(--s2) var(--s3);font-family:var(--font-mono);font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;}
+.mini-input:focus{border-color:var(--blue);box-shadow:0 0 8px rgba(0,200,255,.25);}
+.mini-input.orange-input{border-color:rgba(255,102,51,.35);}
+.mini-input.orange-input:focus{border-color:var(--orange);box-shadow:0 0 8px rgba(255,102,51,.35);}
+.mini-input:focus{border-color:var(--blue);}
+/* 滑桿面板 */
+/* 完成度條（Quest頁任務下方） */
+.task-prog-bar{height:2px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:var(--s2);overflow:hidden;}
+.task-prog-fill{height:100%;border-radius:2px;transition:width .4s;}
+.recent-lbl{font-family:var(--font-mono);font-size:13px;letter-spacing:3px;color:var(--text-sub);margin-bottom:var(--s2);padding-top:var(--s2);border-top:1px solid rgba(0,200,255,.08);}
+.recent-item{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);margin-bottom:var(--s1);border:1px solid rgba(0,200,255,.08);background:rgba(3,8,15,.5);}
+.recent-item.timed-item{border-color:rgba(255,102,51,.1);}
+.recent-name{flex:1;font-family:var(--font-zh);font-size:14px;color:var(--text);}
+.recent-days{font-family:var(--font-mono);font-size:13px;color:var(--text-sub);}
+.recent-deadline{font-family:var(--font-mono);font-size:13px;color:rgba(255,102,51,.7);}
+.adventure-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:var(--s4);}
+.adv-text{font-family:var(--font-mono);font-size:13px;color:var(--text-sub);letter-spacing:3px;text-align:center;line-height:2;}
+/* 冒險頁 */
+#page-adventure{padding:0;overflow:hidden;display:none;flex-direction:column;height:100%;}
+#page-adventure.active{display:flex;}
+#adv-battle{display:none;flex-direction:column;height:100%;padding-bottom:60px;}
+#adv-battle.show{display:flex;}
+/* RPG戰鬥 */
+/* 日誌 */
+/* 操作區 */
+/* 場景：flex:1 撐開剩餘空間，底部內容自然往下 */
+.adv-scene{position:relative;flex:1;overflow:hidden;min-height:120px;}
+.scene-bg{position:absolute;inset:0;background:linear-gradient(180deg,#080812 0%,#0d1225 60%,#111830 100%);}
+.scene-ground{position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(180deg,transparent,rgba(0,10,30,.95));border-top:1px solid rgba(0,200,255,.06);}
+/* .scene-floor 原本在這裡,但寫法 malformed(原始檔的 bug)且與下面 .map-scene 區的 .scene-floor 重複,實際生效的是後面那條,故移除 */
+.scene-ruins{position:absolute;inset:0;opacity:.15;}
+/* 玩家：左下角 */
+/* 敵人：右下角（對稱站立） */
+/* VS 分隔線 */
+/* 戰鬥結果 */
+/* 戰鬥面板 HP行 */
+/* 狀態格子列 */
+/* 下拉清單：absolute，從格子正下方浮出，寬度跟格子一致 */
+/* 舊兼容 */
+/* 時間軸 */
+.tl-slot{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;flex-shrink:0;width:64px;}
+.tl-slot.enemy-tl-slot{cursor:default;}
+.tl-label{font-family:var(--font-mono);font-size:7px;letter-spacing:1px;}
+.tl-slot.player-tl-slot .tl-label{color:rgba(0,200,255,.5);}
+.tl-slot.enemy-tl-slot .tl-label{color:rgba(180,100,255,.5);}
+.tl-inner{width:64px;height:82px;border:1.5px solid;background:rgba(3,8,15,.7);display:flex;align-items:center;justify-content:center;position:relative;transition:all .2s;border-radius:5px;}
+.tl-slot.player-tl-slot .tl-inner{border-color:rgba(0,200,255,.18);}
+.tl-slot.player-tl-slot.active-slot .tl-inner{border-color:var(--blue);box-shadow:0 0 8px rgba(0,200,255,.25);}
+.tl-slot.enemy-tl-slot .tl-inner{border-color:rgba(180,100,255,.18);}
+.tl-inner.has-card.player-card{border-color:var(--blue);background:rgba(0,200,255,.06);}
+.tl-inner.has-card.enemy-card{border-color:rgba(180,100,255,.5);background:rgba(150,50,200,.08);}
+/* ── 戰鬥底部 ── */
+/* BATTLE overlay — 蓋在兩列牌上面 */
+.card-cost{position:absolute;top:3px;right:4px;font-family:var(--font-mono);font-size:8px;color:rgba(255,200,100,.55);line-height:1;}
+/* BATTLE 按鈕（在 overlay 內） */
+@keyframes btnSweep{0%{left:-60%}100%{left:140%}}
+/* tooltip */
+/* ── 浮動日誌提示 ── */
+/* 閃爍游標 */
+.log-cursor{display:inline-block;width:8px;height:1em;background:var(--blue);opacity:.7;animation:blink .9s step-end infinite;vertical-align:text-bottom;margin-left:2px;}
+@keyframes blink{0%,100%{opacity:.7}50%{opacity:0}}
+/* ── 書籤區 ── 寶可夢左右書籤樣式 */
+/* 左側書籤欄 */
+.btabs-left{display:flex;flex-direction:column;width:56px;flex-shrink:0;border-right:2px solid rgba(0,200,255,.1);}
+/* 右側書籤欄 */
+.btabs-right{display:flex;flex-direction:column;width:56px;flex-shrink:0;border-left:2px solid rgba(0,200,255,.1);}
+/* 單個書籤 */
+/* 左側active：右邊亮線 */
+.btabs-left .battle-tab.active::after{content:'';position:absolute;right:-2px;top:0;bottom:0;width:2px;background:var(--blue);box-shadow:0 0 6px var(--blue);}
+/* 右側active：左邊亮線 */
+.btabs-right .battle-tab.active::after{content:'';position:absolute;left:-2px;top:0;bottom:0;width:2px;background:var(--blue);box-shadow:0 0 6px var(--blue);}
+/* 中間內容區 */
+.btab-panel{display:none;height:100%;padding:6px;overflow:hidden;}
+
+.btab-panel.active{display:flex;flex-direction:column;}
+.btab-empty{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center;padding:var(--s4) 0;letter-spacing:2px;}
+/* ── 裝備側選單按鈕 ── */
+.equip-side-btn{position:absolute;top:0;left:0;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:#fff;background:var(--purple);padding:4px 10px;cursor:pointer;z-index:20;border-radius:0 0 4px 0;}
+/* ── 裝備側選單 ── */
+.equip-side-overlay{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.55);display:none;}
+.equip-side-overlay.show{display:block;}
+.equip-side-panel{position:absolute;top:0;left:0;bottom:0;width:88%;max-width:340px;background:#06080f;border-right:1px solid rgba(0,200,255,.2);display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s ease;}
+.equip-side-overlay.show .equip-side-panel{transform:translateX(0);}
+.equip-side-title{font-family:var(--font-mono);font-size:12px;letter-spacing:3px;color:var(--blue);padding:var(--s5) var(--s4) var(--s3);border-bottom:1px solid rgba(0,200,255,.1);}
+.equip-side-list{flex:1;overflow-y:auto;padding:var(--s3) var(--s4);display:flex;flex-direction:column;gap:var(--s2);}
+.equip-side-item{border:1px solid rgba(0,200,255,.12);background:rgba(3,8,15,.7);padding:var(--s3);display:flex;flex-direction:column;gap:3px;}
+.equip-side-slot{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;}
+.equip-side-name{font-family:var(--font-mono);font-size:12px;color:#fff;}
+.equip-side-stat{font-family:var(--font-mono);font-size:10px;color:var(--orange);}
+/* 入場 */
+.adv-gate{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:var(--s5);}
+.adv-gate-ap{font-family:var(--font-mono);font-size:12px;color:var(--text-sub);}
+.adv-enter-btn{padding:12px 32px;border:1px solid var(--blue);color:var(--blue);font-family:var(--font-mono);font-size:11px;letter-spacing:3px;cursor:pointer;background:transparent;position:relative;}
+.adv-enter-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:var(--blue);box-shadow:0 0 8px var(--blue);}
+/* .dropdown-overlay / .dropdown-panel / .dropdown-title / .dropdown-close 已搬到 layout.css */
+/* @keyframes slideUp 已搬到 base.css */
+/* 選單每列 */
+/* 數量控制 */
+/* 格子數量標記 */
+
+/* .toast / .toast.show 已搬到 base.css */
+/* .tab-bar 系列 .tab-item / .tab-svg / .tab-lbl / .center-tab / .adv-ring 已搬到 layout.css */
+/* ── 生活技能格子 ── */
+/* 上半：icon + 名稱 */
+/* icon 圓角方形 */
+/* 下半 */
+/* EXP 條 */
+/* 技能詳情 */
+/* 狩獵計時器 */
+/* ── 挖礦掃雷 ── */
+/* ── 採集系統 ── */
+/* ── 採集系統 ── */
+/* 上排：已選牌區 */
+/* 下排：手牌區 */
+/* 牌本體 */
+/* 牌角：數字+花色 */
+/* 牌中央圖案 */
+/* 手牌扇形排列：重疊 */
+
+/* 牌型標籤 */
+/* 按鈕 */
+@keyframes gathGlow{from{opacity:.6;color:rgba(255,220,80,.5);}to{opacity:1;color:#ffdc50;text-shadow:0 0 8px #ffdc50;}}
+@keyframes suitGlow{from{filter:drop-shadow(0 0 3px currentColor);transform:scale(1);}to{filter:drop-shadow(0 0 10px currentColor) brightness(1.4);transform:scale(1.15);}}
+
+/* ── 烹飪 ── */
+/* ── 製造 header tabs ── */
+/* 武器種類選擇 */
+/* 部位槽 */
+/* 製造按鈕 */
+/* 藥水槽 */
+.potion-slot-row{display:flex;flex-direction:column;gap:6px;}
+.potion-slot-label{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);}
+.potion-slot{border:1.5px dashed rgba(100,180,255,.25);background:rgba(3,8,15,.7);padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .15s;}
+.potion-slot:active{background:rgba(100,180,255,.06);}
+.potion-slot.filled{border-style:solid;border-color:rgba(100,180,255,.2);}
+.potion-slot-icon{font-size:22px;line-height:1;flex-shrink:0;}
+.potion-slot-name{font-family:var(--font-zh);font-size:15px;color:#e0e8f0;}
+.potion-slot-empty{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);letter-spacing:1px;padding-left:6px;}
+.potion-arrow{font-family:var(--font-mono);font-size:18px;color:rgba(100,180,255,.25);text-align:center;line-height:1;}
+/* 預覽區 */
+.potion-preview{border:1px solid rgba(100,180,255,.15);background:rgba(0,100,200,.05);padding:var(--s3) var(--s4);position:relative;overflow:hidden;}
+.potion-preview::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,rgba(100,180,255,.4),transparent);}
+.potion-preview-label{font-family:var(--font-mono);font-size:9px;letter-spacing:3px;color:var(--text-dim);margin-bottom:6px;}
+.potion-preview-name{font-family:var(--font-zh);font-size:16px;color:#e0e8f0;display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.potion-preview-rarity{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;}
+.potion-preview-stat{font-family:var(--font-mono);font-size:18px;color:#00ff96;letter-spacing:1px;margin-bottom:4px;}
+.potion-preview-range{font-size:11px;color:var(--text-sub);}
+.potion-preview-type{font-family:var(--font-mono);font-size:10px;color:var(--text-sub);letter-spacing:1px;}
+/* .adv-tab-bar 已搬到 layout.css */
+/* ── 生活抽屜 ── */
+/* 抽屜裡的技能列表 1×6 */
+/* 抽屜裡的詳情 */
+/* 左上角觸發按鈕 */
+/* 計時器快覽區 */
+/* ── 生活技能計時器 ── */
+.adv-sub-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;}
+.bag-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.bag-tabs{display:flex;padding:0 var(--s3);gap:4px;padding-top:var(--s2);}
+.bag-tab{flex:1;text-align:center;padding:8px 4px 10px;font-family:var(--font-mono);font-size:12px;letter-spacing:2px;color:rgba(0,200,255,.3);cursor:pointer;position:relative;transition:all .2s;border-bottom:2px solid transparent;}
+.bag-tab.active{color:var(--blue);border-bottom-color:var(--blue);text-shadow:0 0 10px rgba(0,200,255,.5);}
+.bag-filter-row{display:flex;overflow:hidden;flex-shrink:0;padding:10px 0;}.bag-filter-row-inner{display:flex;gap:8px;overflow-x:auto;flex:1;padding:0 var(--s3);scroll-behavior:smooth;}.bag-filter-row-inner::-webkit-scrollbar{display:none;}
+.bag-filter-row::-webkit-scrollbar{display:none;}
+.bag-filter{padding:5px 14px;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;color:rgba(0,200,255,.45);cursor:pointer;white-space:nowrap;transition:all .15s;border:1px solid rgba(0,200,255,.2);border-radius:20px;background:transparent;}
+.bag-filter.active{color:var(--blue);border-color:var(--blue);background:rgba(0,200,255,.08);box-shadow:0 0 8px rgba(0,200,255,.15);}
+.bag-list{flex:1;overflow-y:auto;padding:var(--s2) 0;}
+.bag-list::-webkit-scrollbar{display:none;}
+.bag-item{display:flex;align-items:center;gap:var(--s3);padding:12px var(--s4);border-bottom:1px solid rgba(255,255,255,.15);transition:background .15s;}
+.bag-item:active{background:rgba(255,255,255,.03);}
+.bag-item-rarity{width:3px;height:36px;border-radius:2px;flex-shrink:0;}
+.bag-item-name{flex:1;font-size:15px;color:var(--text);}
+.bag-item-sub{font-size:11px;color:var(--text-dim);margin-top:2px;letter-spacing:1px;}
+.bag-item-qty{font-family:var(--font-mono);font-size:14px;color:rgba(255,255,255,.6);letter-spacing:1px;}
+.bag-empty{display:flex;align-items:center;justify-content:center;height:120px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim);letter-spacing:2px;}
+.adv-sub-icon{font-size:48px;opacity:.4;}
+.adv-sub-title{font-family:var(--font-mono);font-size:14px;color:var(--blue);letter-spacing:3px;}
+.adv-sub-hint{font-family:var(--font-zh);font-size:13px;color:var(--text-dim);}
+/* @keyframes scanline / .scanline 已搬到 base.css */
+/* ── 技能格 ── */
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,1fr);gap:5px;flex:1;min-height:0;}
+.skill-cell{border:1px solid rgba(0,200,255,.18);background:rgba(3,8,15,.8);padding:6px 8px;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:all .15s;position:relative;overflow:hidden;}
+.skill-cell::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--blue);box-shadow:0 0 5px var(--blue);opacity:.4;}
+.skill-cell.selected{border-color:var(--cyan);background:rgba(0,255,204,.06);}
+.skill-cell.selected::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan);opacity:1;}
+.skill-cell.on-cd{opacity:.4;cursor:default;}
+.skill-cell-name{font-family:var(--font-mono);font-size:11px;color:#fff;letter-spacing:1px;}
+.skill-cell-desc{font-family:var(--font-mono);font-size:9px;color:var(--text-sub);letter-spacing:.3px;line-height:1.4;}
+.skill-cell-cd{font-family:var(--font-mono);font-size:9px;color:var(--orange);margin-top:1px;}
+.skill-page-dot{display:flex;justify-content:center;gap:6px;padding:2px 0;}
+.skill-page-dot span{width:5px;height:5px;border-radius:50%;background:rgba(0,200,255,.2);display:inline-block;}
+.skill-page-dot span.active{background:var(--blue);box-shadow:0 0 4px var(--blue);}
+
+/* ══ 樓層選擇頁 ══ */
+.floor-select-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.floor-select-header{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+.floor-select-title{font-family:var(--font-mono);font-size:13px;letter-spacing:3px;color:var(--text-sub);}
+.floor-select-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:4px;letter-spacing:1px;}
+.floor-list{flex:1;overflow-y:auto;scrollbar-width:none;padding:8px 0;}
+.floor-list::-webkit-scrollbar{display:none;}
+.floor-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.15);cursor:pointer;transition:background .15s;position:relative;}
+.floor-item.unlocked:active{background:rgba(0,200,255,.05);}
+.floor-item.locked{opacity:.35;cursor:not-allowed;}
+.floor-item.current-max{background:rgba(0,200,255,.04);border-left:2px solid var(--blue);}
+.floor-num-badge{width:36px;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:13px;font-weight:bold;flex-shrink:0;}
+.floor-item.unlocked .floor-num-badge{border:1px solid rgba(0,200,255,.3);color:var(--blue);background:rgba(0,200,255,.06);}
+.floor-item.locked .floor-num-badge{border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.2);}
+.floor-item.current-max .floor-num-badge{border-color:var(--blue);box-shadow:0 0 8px rgba(0,200,255,.2);}
+.floor-info{flex:1;}
+.floor-name{font-size:14px;color:var(--text);}
+.floor-item.locked .floor-name{color:rgba(255,255,255,.25);}
+.floor-status-tag{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;margin-top:3px;}
+.floor-item.unlocked .floor-status-tag{color:rgba(0,200,255,.5);}
+.floor-item.locked .floor-status-tag{color:rgba(255,255,255,.15);}
+.floor-chevron{font-family:var(--font-mono);font-size:14px;color:rgba(0,200,255,.4);}
+.floor-item.locked .floor-chevron{color:rgba(255,255,255,.1);}
+
+/* ══ 地圖頁 ══ */
+#page-map-battle{display:none;flex-direction:column;height:100%;position:relative;z-index:1;}
+#page-map-battle.show{display:flex;}
+.map-scene{flex:1;position:relative;overflow:hidden;min-height:0;}
+.map-scene-bg{position:absolute;inset:0;background:linear-gradient(180deg,#080812 0%,#0d1225 60%,#111830 100%);}
+.map-scene-floor{position:absolute;bottom:0;left:0;right:0;height:36%;background:rgba(0,10,30,.6);}
+.map-scene-ground{position:absolute;bottom:0;left:0;right:0;height:28%;background:linear-gradient(180deg,transparent,rgba(0,10,30,.95));border-top:1px solid rgba(0,200,255,.06);}
+.map-player-zone{position:absolute;bottom:28%;left:10%;display:flex;flex-direction:column;align-items:center;}
+.map-player-ph{width:80px;height:80px;border:1px dashed rgba(0,200,255,.25);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:rgba(0,200,255,.3);}
+.map-emblem-zone{position:absolute;bottom:30%;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;}
+.map-emblem-ph{width:72px;height:72px;border:1px solid rgba(0,200,255,.12);background:rgba(0,200,255,.04);display:flex;align-items:center;justify-content:center;}
+.map-floor-num{font-family:var(--font-mono);font-size:11px;color:rgba(0,200,255,.4);letter-spacing:2px;}
+.map-bottom{flex-shrink:0;background:#0a0008;display:flex;flex-direction:column;}
+.map-grid-scroll{overflow-x:auto;scrollbar-width:none;padding:4px 12px 6px;}
+.map-grid-scroll::-webkit-scrollbar{display:none;}
+.map-lanes{display:inline-grid;grid-template-rows:30px 30px;grid-auto-flow:column;gap:3px;min-width:max-content;}
+.map-stair-node{width:30px;height:63px;grid-row:1/3;border:1.5px solid rgba(255,200,50,.4);background:rgba(255,200,50,.06);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;}
+.map-stair-node:active{transform:scale(.93);}
+.map-stair-node-ph{width:14px;height:14px;border:1px dashed rgba(255,200,50,.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:7px;color:rgba(255,200,50,.6);}
+.map-start-node{width:30px;height:63px;grid-row:1/3;border:1.5px solid rgba(0,200,255,.4);background:rgba(0,200,255,.08);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.map-start-node-ph{width:14px;height:14px;border:1px dashed rgba(0,200,255,.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:7px;color:rgba(0,200,255,.5);}
+.map-node{width:30px;height:30px;border:1px solid rgba(255,255,255,.06);background:rgba(20,5,10,.8);border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;position:relative;flex-shrink:0;}
+.map-node.node-battle{border-color:rgba(180,30,30,.4);background:rgba(40,5,5,.9);}
+.map-node.node-elite{border-color:rgba(220,60,60,.5);background:rgba(50,5,5,.9);}
+.map-node.node-boss{border-color:rgba(255,30,30,.6);background:rgba(60,0,0,.95);}
+.map-node.node-chest{border-color:rgba(200,170,30,.4);background:rgba(30,25,0,.9);}
+.map-node.node-trap{border-color:rgba(130,50,200,.3);background:rgba(20,5,30,.9);}
+.map-node.node-rest{border-color:rgba(0,180,255,.2);background:rgba(0,10,30,.9);}
+.map-node.node-shop{border-color:rgba(220,170,30,.2);background:rgba(20,15,0,.9);}
+.map-node.node-hidden{border-color:rgba(80,80,80,.2);background:rgba(10,10,10,.8);}
+.map-node.node-done-bright{background:rgba(160,20,20,.85);border-color:rgba(220,50,50,.6);cursor:default;pointer-events:none;}
+.map-node.node-available.node-battle{border-color:rgba(220,50,50,.7);box-shadow:0 0 6px rgba(200,40,40,.2);}
+.map-node.node-available.node-rest{border-color:rgba(0,200,255,.5);box-shadow:0 0 6px rgba(0,200,255,.15);}
+.map-node.node-available.node-shop{border-color:rgba(255,200,50,.5);box-shadow:0 0 6px rgba(255,200,50,.15);}
+.map-node.node-current-pos{outline:2px solid rgba(255,255,255,.7);outline-offset:1px;}
+.map-node:not(.node-done-bright):active{transform:scale(.9);}
+.map-node.node-tall{height:63px;grid-row:1/3;}
+.node-img{width:12px;height:12px;object-fit:contain;}
+.node-img-placeholder{width:12px;height:12px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:7px;color:rgba(255,255,255,.35);}
+.node-current-icon-ph{position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:10px;pointer-events:none;}
+.map-detail{flex-shrink:0;display:flex;gap:8px;padding:8px 12px 12px;}
+.map-choice-card{flex:1;background:rgba(30,15,25,.85);border-radius:8px;display:flex;flex-direction:column;align-items:center;padding:14px 10px 12px;gap:10px;cursor:pointer;border:1px solid rgba(255,255,255,.06);transition:border-color .15s;}
+.map-choice-card:active{background:rgba(50,20,35,.9);}
+.map-choice-card.choice-battle{border-color:rgba(180,30,30,.3);}
+.map-choice-card.choice-elite{border-color:rgba(220,60,60,.6);box-shadow:0 0 10px rgba(220,60,60,.15);}
+.map-choice-card.choice-boss{border-color:rgba(255,30,30,.7);}
+.map-choice-card.choice-chest{border-color:rgba(200,170,30,.4);}
+.map-choice-card.choice-trap{border-color:rgba(130,50,200,.4);}
+.map-choice-card.choice-rest{border-color:rgba(0,180,255,.2);}
+.map-choice-card.choice-shop{border-color:rgba(220,170,30,.2);}
+.map-choice-card.choice-hidden{border-color:rgba(80,80,80,.2);}
+.elite-badge{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:#ff6060;border:1px solid rgba(220,60,60,.5);padding:2px 7px;border-radius:10px;background:rgba(220,60,60,.1);}
+.map-shop-bar{width:100%;background:rgba(30,22,0,.9);border-radius:8px;border:1px solid rgba(255,200,50,.4);padding:14px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s;box-shadow:0 0 8px rgba(255,200,50,.08);}
+.map-shop-bar:active{background:rgba(50,36,0,.9);}
+.map-shop-bar-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.map-shop-bar-title{font-family:var(--font-mono);font-size:13px;letter-spacing:2px;color:#ffe066;}
+.map-shop-bar-sub{font-family:var(--font-zh);font-size:11px;color:var(--text-dim);margin-top:3px;}
+.map-choice-icon{width:52px;height:52px;object-fit:contain;}
+.map-choice-icon-ph{width:52px;height:52px;border:1px dashed rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:18px;color:rgba(255,255,255,.3);border-radius:4px;}
+.map-choice-desc{font-family:var(--font-zh);font-size:12px;color:rgba(200,180,200,.7);text-align:center;line-height:1.55;}
+/* 寶箱 */
+.chest-overlay{position:absolute;inset:0;z-index:600;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.chest-overlay.show{display:flex;}
+.chest-title{font-family:var(--font-mono);font-size:13px;letter-spacing:3px;color:var(--text-sub);}
+.chest-colors-wrap{display:flex;gap:10px;margin-bottom:4px;}
+.chest-color-swatch{width:56px;height:56px;border-radius:6px;border:2px solid rgba(255,255,255,.2);}
+.chest-timer-bar-wrap{width:260px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+.chest-timer-bar{height:100%;background:var(--blue);border-radius:2px;transition:width linear;}
+.chest-phase-label{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;}
+.chest-wheel-wrap{position:relative;width:220px;height:220px;}
+.chest-wheel-canvas{width:220px;height:220px;border-radius:50%;cursor:crosshair;touch-action:none;}
+.chest-picker-dot{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none;}
+.chest-selections{display:flex;gap:10px;}
+.chest-sel-swatch{width:56px;height:56px;border-radius:6px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);}
+.chest-confirm-btn{padding:10px 32px;border:1px solid var(--blue);color:var(--blue);font-family:var(--font-mono);font-size:11px;letter-spacing:3px;cursor:pointer;background:rgba(0,200,255,.06);}
+.chest-result{font-family:var(--font-mono);font-size:14px;letter-spacing:2px;text-align:center;}
+.chest-result.success{color:var(--cyan);}.chest-result.fail{color:var(--red);}
+.qte-wrap{position:relative;width:220px;height:220px;flex-shrink:0;}
+.qte-canvas{width:220px;height:220px;}
+.qte-tap-btn{position:absolute;bottom:-60px;left:50%;transform:translateX(-50%);padding:14px 40px;border:2px solid rgba(255,255,255,.8);border-radius:32px;color:#fff;font-family:var(--font-mono);font-size:15px;font-weight:bold;letter-spacing:4px;cursor:pointer;background:rgba(8,4,4,.85);}
+.qte-tap-btn:active{transform:translateX(-50%) scale(.96);}
+.code-input-row{display:flex;gap:8px;justify-content:center;}
+.code-digit{width:40px;height:52px;border:1.5px solid rgba(0,200,255,.3);background:rgba(3,8,15,.8);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:22px;font-weight:bold;color:#fff;cursor:pointer;transition:border-color .15s;}
+.code-digit.active{border-color:var(--blue);box-shadow:0 0 8px rgba(0,200,255,.3);}
+.code-numpad{display:grid;grid-template-columns:repeat(5,44px);gap:6px;justify-content:center;}
+.code-numpad-btn{height:40px;border:1px solid rgba(255,255,255,.12);background:rgba(20,20,30,.8);border-radius:4px;font-family:var(--font-mono);font-size:16px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s;}
+.code-numpad-btn:active{background:rgba(0,200,255,.15);}
+.code-numpad-btn.del{color:var(--red);border-color:rgba(255,34,68,.2);}
+.code-numpad-btn.confirm{color:var(--cyan);border-color:rgba(0,200,255,.3);}
+.code-history{display:flex;flex-direction:column;gap:4px;width:100%;max-height:160px;overflow-y:auto;scrollbar-width:none;}
+.code-history::-webkit-scrollbar{display:none;}
+.code-hist-row{display:flex;align-items:center;gap:8px;padding:4px 8px;background:rgba(255,255,255,.04);border-radius:3px;}
+.code-hist-digits{display:flex;gap:4px;font-family:var(--font-mono);font-size:16px;color:#fff;letter-spacing:2px;}
+.code-hist-result{font-family:var(--font-mono);font-size:12px;color:var(--text-sub);margin-left:auto;}
+.code-hist-a{color:var(--cyan);}.code-hist-b{color:var(--gold);}
+.code-attempts{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;}
+/* 地圖面板按鈕 */
+.map-menu-btn{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-sub);border:1px solid rgba(255,255,255,.12);padding:3px 8px;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,.03);border-radius:2px;}
+.map-menu-btn:active{background:rgba(0,200,255,.08);border-color:rgba(0,200,255,.3);color:var(--blue);}
+.map-panel-overlay{position:absolute;inset:0;z-index:300;background:var(--bg);display:none;flex-direction:column;overflow:hidden;}
+.map-panel-overlay.show{display:flex;}
+.map-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+.map-panel-title{font-family:var(--font-mono);font-size:12px;letter-spacing:3px;color:var(--text-sub);}
+.map-panel-close{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);cursor:pointer;padding:4px 10px;border:1px solid rgba(255,255,255,.1);}
+.map-panel-body{flex:1;overflow-y:auto;scrollbar-width:none;}
+.map-panel-body::-webkit-scrollbar{display:none;}
+/* 商店 overlay */
+.shop-overlay{position:absolute;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column;}
+.shop-overlay.show{display:flex;}
+.shop-close{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);cursor:pointer;padding:4px 10px;border:1px solid rgba(255,255,255,.1);}
+/* 戰鬥主體 */
+#adv-battle-map{display:none;flex-direction:column;height:100%;flex:1;position:relative;}
+#adv-battle-map.show{display:flex;}
+.adv-scene{position:relative;flex:1;overflow:hidden;min-height:0;}
+.scene-bg{position:absolute;inset:0;background:linear-gradient(180deg,#080812 0%,#0d1225 60%,#111830 100%);}
+.scene-floor{position:absolute;bottom:0;left:0;right:0;height:36%;background:rgba(0,10,30,.6);}
+.scene-ground{position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(180deg,transparent,rgba(0,10,30,.95));border-top:1px solid rgba(0,200,255,.06);}
+@keyframes btnSweep{0%{left:-60%}100%{left:140%}}
+@keyframes escan{0%,100%{left:-40px}50%{left:100%}}
+@keyframes sscan{0%,100%{left:-60px}50%{left:100%}}
+/* ── 生活技能弧形選單 ── */
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="dropdown-overlay" id="equip-overlay" onclick="closeDD('equip')">
+  <div class="dropdown-panel" onclick="event.stopPropagation()">
+    <div class="dropdown-title"><span id="equip-dd-title">SELECT EQUIPMENT</span><div class="dropdown-close" onclick="closeDD('equip')">✕</div></div>
+    <div id="equip-dd-list"></div>
+  </div>
+</div>
+<div class="dropdown-overlay" id="skill-overlay" onclick="closeDD('skill')">
+  <div class="dropdown-panel skill-dd-panel" onclick="event.stopPropagation()">
+    <div class="dropdown-title skill-title-c"><span id="skill-dd-title">SELECT SKILL</span><div class="dropdown-close" onclick="closeDD('skill')">✕</div></div>
+    <div id="skill-dd-list"></div>
+  </div>
+</div>
+<div class="dropdown-overlay" id="crft-overlay" onclick="closeDD('crft')">
+  <div class="dropdown-panel crft-dd-panel" onclick="event.stopPropagation()">
+    <div class="dropdown-title crft-dd-title-c"><span id="crft-dd-title">SELECT MATERIAL</span><div class="dropdown-close" onclick="closeDD('crft')">✕</div></div>
+    <div id="crft-dd-list"></div>
+  </div>
+</div>
+<!-- Task B:命名 modal(待命名武器點擊後彈出) -->
+<div class="dropdown-overlay" id="naming-overlay" onclick="closeNamingModal()">
+  <div class="dropdown-panel naming-modal" onclick="event.stopPropagation()">
+    <div class="dropdown-title"><span id="naming-modal-title">命名武器</span><div class="dropdown-close" onclick="closeNamingModal()">✕</div></div>
+    <div id="naming-modal-body"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="name-edit-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;">
+  <div onclick="event.stopPropagation()" style="background:#060e1a;border:1px solid rgba(0,200,255,.3);border-radius:12px;padding:24px 20px;width:80%;max-width:300px;">
+    <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:3px;color:rgba(0,200,255,.7);margin-bottom:16px;text-align:center;">更改名稱</div>
+    <input id="name-edit-input" type="text" maxlength="12" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(0,200,255,.25);color:#fff;font-family:var(--font-mono);font-size:15px;padding:10px 12px;border-radius:8px;outline:none;margin-bottom:20px;">
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeNameEdit()" style="flex:1;padding:10px;font-family:var(--font-mono);font-size:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:var(--text-sub);border-radius:8px;cursor:pointer;letter-spacing:1px;">取消</button>
+      <button onclick="confirmNameEdit()" style="flex:1;padding:10px;font-family:var(--font-mono);font-size:12px;background:rgba(0,200,255,.15);border:1px solid rgba(0,200,255,.4);color:#00c8ff;border-radius:8px;cursor:pointer;letter-spacing:1px;">確認</button>
+    </div>
+  </div>
+</div>
+<div class="phone">
+  <!-- page-quest removed -->
+
+  <div class="page" id="page-status">
+    <!-- 設定頁（預留） -->
+    <div id="settings-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:12px;opacity:.3;">
+      <svg viewBox="0 0 32 32" fill="none" style="width:36px;height:36px;"><circle cx="16" cy="16" r="12" stroke="#00c8ff" stroke-width="1.5"/><line x1="16" y1="10" x2="16" y2="16" stroke="#00c8ff" stroke-width="1.5" stroke-linecap="round"/><circle cx="16" cy="20" r="1.2" fill="#00c8ff"/></svg>
+      <div style="font-family:var(--font-mono);font-size:11px;color:#00c8ff;letter-spacing:3px;">// SETTINGS</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-sub);letter-spacing:2px;">COMING SOON</div>
+    </div>
+  </div>
+  <!-- 生活技能獨立 page(內容由 js/lifeskill.js 渲染) -->
+  <div class="page" id="page-hunt">
+    <div class="lifeskill-page-header" id="ls-header-hunt"></div>
+    <div class="lifeskill-content" id="ls-content-hunt"></div>
+  </div>
+  <div class="page" id="page-mine">
+    <div class="lifeskill-page-header" id="ls-header-mine"></div>
+    <div class="lifeskill-content" id="ls-content-mine"></div>
+  </div>
+  <div class="page" id="page-gath">
+    <div class="lifeskill-page-header" id="ls-header-gath"></div>
+    <div class="lifeskill-content" id="ls-content-gath"></div>
+  </div>
+  <div class="page" id="page-cook">
+    <div class="lifeskill-page-header" id="ls-header-cook"></div>
+    <div class="lifeskill-content" id="ls-content-cook"></div>
+  </div>
+  <div class="page" id="page-crft">
+    <div class="lifeskill-page-header" id="ls-header-crft"></div>
+    <div class="lifeskill-content" id="ls-content-crft"></div>
+  </div>
+  <div class="page active" id="page-adventure">
+    <!-- 樓層選擇 -->
+    <div id="floor-select-screen" class="floor-select-wrap">
+      <div class="floor-select-header">
+        <div class="floor-select-title">// TOWER OF AINCRAD</div>
+        <div class="floor-select-sub" id="floor-select-sub">選擇樓層進入戰鬥</div>
+      </div>
+      <div class="floor-list" id="floor-list"></div>
+    </div>
+  </div>
+
+  <!-- 地圖頁（覆蓋在整個畫面） -->
+  <div id="page-map-battle" style="position:absolute;inset:0;z-index:100;display:none;flex-direction:column;">
+    <div class="map-scene">
+      <div class="map-scene-bg"></div>
+      <div class="map-scene-floor"></div>
+      <div class="map-scene-ground"></div>
+      <div class="map-player-zone"><div class="map-player-ph">PLAYER</div></div>
+      <div class="map-emblem-zone">
+        <div class="map-emblem-ph"></div>
+        <div class="map-floor-num" id="map-floor-label">FLOOR 1</div>
+      </div>
+    </div>
+    <div class="map-bottom">
+      <div class="battle-panel" style="border-top:none;">
+        <div class="bp-left">
+          <div class="bp-hp-num" id="map-hp-num"><span class="bp-hp-cur" id="map-hp-cur">—</span><span class="bp-hp-max" id="map-hp-max"></span></div>
+          <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="map-hp-bar" style="width:100%;background:linear-gradient(90deg,#cc2233,#ff4455);"></div></div>
+          <div class="bp-status-slots">
+            <div class="status-slot-wrap"><div class="status-slot empty" id="map-buff-slot">▲</div></div>
+            <div class="status-slot-wrap"><div class="status-slot empty" id="map-debuff-slot">▼</div></div>
+          </div>
+        </div>
+        <div class="bp-center"><div class="bp-turn-badge" style="visibility:hidden;"></div></div>
+        <div class="bp-right" style="display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-end;padding-right:8px;">
+          <div class="map-menu-btn" onclick="openBattlePanel('bag')" style="padding:5px 7px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="8" width="16" height="13" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 8V6a4 4 0 018 0v2" stroke="currentColor" stroke-width="1.3"/><line x1="12" y1="12" x2="12" y2="16" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="10" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </div>
+          <div class="map-menu-btn" onclick="openBattlePanel('status')" style="padding:5px 7px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3L4 6.5v5.5c0 4.2 3.4 7.9 8 9.5 4.6-1.6 8-5.3 8-9.5V6.5L12 3z" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="map-menu-btn" onclick="exitFloorMap()" style="padding:5px 7px;color:rgba(255,80,80,.7);border-color:rgba(255,80,80,.2);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="map-grid-scroll"><div class="map-lanes" id="map-lanes"></div></div>
+      <div class="map-detail" id="map-detail"></div>
+    </div>
+  </div>
+
+  <!-- 戰鬥頁（覆蓋在整個畫面） -->
+  <div id="adv-battle-map" style="position:absolute;inset:0;z-index:101;display:none;flex-direction:column;background:#03080f;">
+    <div class="adv-scene" onclick="if(selectedCard){selectedCard=null;hideConfirm();renderCards();}">
+      <div class="scene-floor"></div>
+      <div class="scene-ground"></div>
+      <div class="player-zone" id="player-zone"><div class="player-sprite-placeholder">PLAYER</div></div>
+      <div class="enemy-zone" id="enemy-zone"><div class="enemy-frame"><div class="enemy-sprite-placeholder">ENEMY</div></div></div>
+      <div class="scene-vs">VS</div>
+      <div class="battle-result" id="battle-result">
+        <div class="result-title win" id="result-title">VICTORY</div>
+        <div class="result-detail" id="result-detail"></div>
+        <button class="result-btn" onclick="exitBattle()">// CONTINUE</button>
+      </div>
+    </div>
+    <div class="battle-panel" onclick="event.stopPropagation()">
+      <div class="bp-left">
+        <div class="bp-hp-num" id="bp-p-hp"><span class="bp-hp-cur" id="bp-p-cur">—</span><span class="bp-hp-max" id="bp-p-max"></span></div>
+        <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="bp-p-bar" style="width:100%;background:linear-gradient(90deg,#cc2233,#ff4455);"></div></div>
+        <div class="bp-stagger-wrap"><div class="bp-stagger-bar" id="bp-p-stagger" style="width:0%;"></div></div>
+        <div class="bp-status-slots">
+          <div class="status-slot-wrap"><div class="status-slot empty" id="p-buff-slot">▲</div></div>
+          <div class="status-slot-wrap"><div class="status-slot empty" id="p-debuff-slot">▼</div></div>
+        </div>
+      </div>
+      <div class="bp-center"><div class="bp-turn-badge" id="bp-turn">1</div></div>
+      <div class="bp-right">
+        <div class="bp-hp-num" style="justify-content:flex-end;" id="bp-e-hp"><span class="bp-hp-cur" id="bp-e-cur">—</span><span class="bp-hp-max" id="bp-e-max"></span></div>
+        <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="bp-e-bar" style="width:100%;background:linear-gradient(90deg,#6633cc,#9944ff);"></div></div>
+        <div class="bp-stagger-wrap"><div class="bp-stagger-bar" id="bp-e-stagger" style="width:0%;"></div></div>
+        <div class="bp-status-slots" style="justify-content:flex-end;">
+          <div class="status-slot-wrap"><div class="status-slot empty" id="e-buff-slot">▲</div></div>
+          <div class="status-slot-wrap"><div class="status-slot empty" id="e-debuff-slot">▼</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="battle-bottom" id="battle-bottom" onclick="if(selectedCard){selectedCard=null;hideConfirm();renderCards();}">
+      <div class="battle-overlay" id="battle-overlay">
+        <button class="confirm-btn" id="confirm-btn" onclick="event.stopPropagation();confirmCard()">ATTACK</button>
+      </div>
+      <div class="card-row-wrap" onclick="event.stopPropagation()">
+        <div class="row-icon"><div style="width:20px;height:20px;border:1px dashed rgba(255,255,255,.2);"></div></div>
+        <div class="cards-row" id="cards-row-1"></div>
+      </div>
+      <div class="card-row-wrap" onclick="event.stopPropagation()">
+        <div class="row-icon"><div style="width:20px;height:20px;border:1px dashed rgba(255,255,255,.2);"></div></div>
+        <div class="cards-row" id="cards-row-2"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding:4px 12px 6px;">
+        <button onclick="event.stopPropagation();fleeBattle()" style="font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.3);background:none;border:1px solid rgba(255,255,255,.1);padding:4px 12px;border-radius:2px;cursor:pointer;">FLEE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 寶箱小遊戲 -->
+  <div class="chest-overlay" id="chest-overlay">
+    <div class="chest-title" id="chest-title">// CHEST UNLOCKING</div>
+    <div id="chest-memorize-phase">
+      <div class="chest-phase-label">記住這些顏色</div>
+      <div class="chest-colors-wrap" id="chest-target-colors"></div>
+      <div class="chest-timer-bar-wrap"><div class="chest-timer-bar" id="chest-mem-bar"></div></div>
+    </div>
+    <div id="chest-qte-phase" style="display:none;align-items:center;flex-direction:column;gap:48px;">
+      <div class="chest-phase-label" id="qte-label">停在綠色區域內</div>
+      <div class="qte-wrap">
+        <canvas class="qte-canvas" id="qte-canvas" width="220" height="220"></canvas>
+        <button class="qte-tap-btn" id="qte-tap-btn" onclick="qteTap()">STOP</button>
+      </div>
+    </div>
+    <div id="chest-pick-phase" style="display:none;align-items:center;flex-direction:column;gap:12px;">
+      <div class="chest-phase-label" id="chest-pick-label">重現顏色 1/1</div>
+      <div class="chest-wheel-wrap">
+        <canvas class="chest-wheel-canvas" id="chest-wheel" width="220" height="220"></canvas>
+        <div class="chest-picker-dot" id="chest-picker-dot" style="display:none;"></div>
+      </div>
+      <div class="chest-selections" id="chest-selections"></div>
+      <button class="chest-confirm-btn" id="chest-confirm-btn" onclick="chestConfirmColor()">確認</button>
+    </div>
+    <div id="chest-result-phase" style="display:none;flex-direction:column;align-items:center;gap:12px;">
+      <div class="chest-result" id="chest-result-msg"></div>
+      <button class="chest-confirm-btn" onclick="closeChestGame()">繼續</button>
+    </div>
+  </div>
+
+  <!-- 地圖面板：背包 / 技能&裝備 -->
+  <div class="map-panel-overlay" id="map-panel-overlay" style="position:absolute;z-index:200;">
+    <div class="map-panel-header">
+      <div class="map-panel-title" id="map-panel-title">// BAG</div>
+      <div class="map-panel-close" onclick="closeBattlePanel()">✕ 關閉</div>
+    </div>
+    <div class="map-panel-body" id="map-panel-body"></div>
+  </div>
+
+  <!-- 商店 -->
+  <div class="shop-overlay" id="shop-overlay">
+    <div class="bag-wrap">
+      <div class="bag-tabs" id="shop-tabs">
+        <div class="bag-tab active" data-tab="buy" onclick="switchShopTab('buy',this)">購買</div>
+        <div class="bag-tab" data-tab="sell" onclick="switchShopTab('sell',this)">販賣</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding-right:4px;flex-shrink:0;">
+          <span style="font-size:13px;">💰</span>
+          <span id="shop-gold-display" style="font-family:var(--font-mono);font-size:14px;color:#ffe066;letter-spacing:1px;font-weight:bold;">0 G</span>
+          <span class="shop-close" onclick="closeShop()" style="margin-left:6px;">✕</span>
+        </div>
+      </div>
+      <div class="bag-filter-row" id="shop-filter-row"></div>
+      <div class="bag-list" id="shop-list"></div>
+    </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="card-tooltip" id="card-tooltip" style="position:absolute;z-index:800;">
+    <div class="ct-icon-box">
+      <div class="ct-icon-placeholder" id="ct-icon-placeholder">?</div>
+      <div class="ct-tag" id="ct-tag">ATK</div>
+    </div>
+    <div class="ct-body">
+      <div class="ct-header">
+        <span class="ct-title" id="ct-title">—</span>
+        <span class="ct-cd" id="ct-cd"></span>
+      </div>
+      <div class="ct-desc" id="ct-desc"></div>
+    </div>
+  </div>
+
+  <!-- 販賣確認 dialog -->
+  <div id="sell-confirm-dlg" style="display:none;"></div>
+
+  <!-- 冒險子頁：STATUS 複製 -->
+  <div class="page" id="page-reserve">
+    <div class="char-card">
+      <div class="card-top">
+        <div><div class="char-name-s" id="r-name" onclick="editPlayerName()" style="cursor:pointer;">無名俠客</div><div class="char-sub">PLAYER STATUS</div></div>
+        <div class="level-box"><div class="level-num" id="r-level">1</div><div class="level-lbl">LEVEL</div></div>
+      </div>
+      <div class="bars-s">
+        <div><div class="bar-row"><span class="bar-label">HP</span><span style="font-family:var(--font-mono);font-size:10px;color:#ff6655" id="r-hp">200/200</span></div><div class="bar-track"><div class="hp-bar" id="r-hp-bar" style="width:100%"></div></div></div>
+        <div><div class="bar-row"><span class="bar-label">EXP</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--cyan)" id="r-exp">0/5</span></div><div class="bar-track"><div class="exp-bar" id="r-exp-bar" style="width:0%"></div></div></div>
+      </div>
+      <div class="pts-banner" id="r-pts-banner"><span class="pts-big" id="r-pts-num">0</span><span>點可分配</span></div>
+      <div class="radar-section">
+        <div style="position:relative;width:150px;height:150px;flex-shrink:0;"><svg id="r-radar-svg" width="150" height="150" viewBox="0 0 136 136" style="display:block;"></svg></div>
+        <div class="r-attr-list" id="r-attr-list"></div>
+      </div>
+      <button class="r-confirm-btn" id="r-confirm-btn" style="display:none;" onclick="confirmAlloc()">✓ 確認分配</button>
+    </div>
+    <div class="gear-card">
+      <div class="gear-tabs">
+        <div class="gear-tab equip-tab active" id="r-gear-tab-equip" onclick="switchGear2('equip')">EQUIPMENT</div>
+        <div class="gear-tab skill-tab" id="r-gear-tab-skill" onclick="switchGear2('skill')">SKILL SLOTS</div>
+      </div>
+      <div class="gear-panel active" id="r-gear-panel-equip">
+        <div class="equip-grid-v">
+          <div class="equip-col" id="r-equip-col-1"></div>
+          <div class="equip-col" id="r-equip-col-2"></div>
+        </div>
+      </div>
+      <div class="gear-panel" id="r-gear-panel-skill">
+        <div class="slots-list" id="r-slots-list"></div>
+        <div class="next-hint" id="r-next-hint"></div>
+      </div>
+    </div>
+  </div>
+  <!-- 冒險子頁：地圖 -->
+  <div class="page" id="page-map">
+    <div class="adv-sub-empty">
+      <div class="adv-sub-icon">🗺</div>
+      <div class="adv-sub-title">// MAP</div>
+      <div class="adv-sub-hint">地圖功能開發中</div>
+    </div>
+  </div>
+  <!-- 冒險子頁：背包 -->
+  <div class="page" id="page-bag">
+    <div class="bag-wrap">
+      <div class="bag-tabs" id="bag-tabs">
+        <div class="bag-tab active" data-tab="material" onclick="switchBagTab('material',this)">素材</div>
+        <div class="bag-tab" data-tab="weapon" onclick="switchBagTab('weapon',this)">武器</div>
+        <div class="bag-tab" data-tab="armor" onclick="switchBagTab('armor',this)">裝備</div>
+        <div class="bag-tab" data-tab="item" onclick="switchBagTab('item',this)">道具</div>
+      </div>
+      <div class="bag-filter-row" id="bag-filter-row" style="display:flex;"></div>
+      <div class="bag-list" id="bag-list"></div>
+    </div>
+  </div>
+  <!-- 冒險子頁：市集 -->
+  <div class="page" id="page-market">
+    <div class="bag-wrap">
+      <div class="bag-tabs" id="market-tabs" style="position:relative;">
+        <div class="bag-tab active" data-tab="buy" onclick="switchMarketTab('buy',this)" style="flex:none;padding:8px 24px 10px;">購買</div>
+        <div class="bag-tab" data-tab="sell" onclick="switchMarketTab('sell',this)" style="flex:none;padding:8px 24px 10px;">販賣</div>
+        <div style="position:absolute;right:var(--s4);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px;">
+          <span style="font-size:13px;">💰</span>
+          <span id="market-gold" style="font-family:var(--font-mono);font-size:14px;color:#ffe066;letter-spacing:1px;text-shadow:0 0 10px rgba(255,220,50,.7);font-weight:bold;">1,250 G</span>
+        </div>
+      </div>
+      <div class="bag-filter-row" id="market-filter-row" style="display:flex;"></div>
+      <div class="bag-list" id="market-list"></div>
+    </div>
+  </div>
+  <!-- 冒險子頁：鐵匠舖 -->
+  <div class="page" id="page-smith">
+    <div class="adv-sub-empty">
+      <div class="adv-sub-icon">⚒</div>
+      <div class="adv-sub-title">// BLACKSMITH</div>
+      <div class="adv-sub-hint">鐵匠舖功能開發中</div>
+    </div>
+  </div>
+<!-- page-stats removed -->
+<!-- page-new removed -->
+
+<!-- ── 生活技能觸發按鈕（ADV 模式固定左上角） ── -->
+<!-- 生活技能快捷選單 -->
+<div class="life-radial" id="life-radial"></div>
+<div class="life-fab" id="life-fab" style="display:block;">
+  <button class="life-fab-btn" id="life-fab-btn" onclick="fabBtnTap(event)" onmousedown="fabBtnDown(event)" ontouchend="fabBtnTap(event)" ontouchmove="fabBtnMove(event)" ontouchstart="fabBtnDown(event)">
+    <span class="life-fab-icon">🌿</span>
+  </button>
+</div>
+
+<script src="js/storage.js"></script>
+<script src="js/state.js"></script>
+<script src="js/wordlist.js"></script>
+<script src="js/items.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/character.js"></script>
+<script src="js/equipment.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/quest.js"></script>
+<script src="js/skills.js"></script>
+<script src="js/lifeskill.js"></script>
+<script src="js/bag.js"></script>
+<script src="js/market.js"></script>
+<script src="js/chest.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/ui.js"></script>
+  <!-- 主 Tab Bar 已移除 -->
+  <!-- Tab Bar(唯一) -->
+  <div class="tab-bar adv-tab-bar" id="adv-tab-bar" style="display:flex;">
+    <div class="tab-item" id="atab-bag" onclick="goAdvPage('bag')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none"><rect x="4" y="8" width="16" height="13" rx="2" stroke="#00c8ff" stroke-width="1.3"/><path d="M8 8V6a4 4 0 018 0v2" stroke="#00c8ff" stroke-width="1.3"/><line x1="12" y1="12" x2="12" y2="16" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/><line x1="10" y1="14" x2="14" y2="14" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <div class="tab-lbl">背包</div>
+    </div>
+    <div class="tab-item" id="atab-reserve" onclick="goAdvPage('reserve')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none"><path d="M12 3L4 6.5v5.5c0 4.2 3.4 7.9 8 9.5 4.6-1.6 8-5.3 8-9.5V6.5L12 3z" fill="#00c8ff" stroke="#00c8ff" stroke-width="0.5" stroke-linejoin="round"/></svg>
+      <div class="tab-lbl">狀態</div>
+    </div>
+    <div class="tab-item center-tab active" id="atab-adventure" onclick="goAdvPage('map')">
+      <div class="adv-ring">
+        <svg width="22" height="22" viewBox="0 0 30 30" fill="none">
+          <line x1="5" y1="5" x2="25" y2="25" stroke="rgba(0,200,255,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="25" y1="5" x2="5" y2="25" stroke="rgba(0,200,255,0.28)" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="15" cy="15" r="7" stroke="rgba(0,200,255,0.28)" stroke-width="1" fill="none"/>
+          <line x1="15" y1="2" x2="15" y2="6" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="15" y1="24" x2="15" y2="28" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="2" y1="15" x2="6" y2="15" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="24" y1="15" x2="28" y2="15" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/>
+          <polygon points="15,3 17.5,15 15,12 12.5,15" fill="#00c8ff"/>
+          <circle cx="15" cy="15" r="2.5" fill="#03080f" stroke="#00c8ff" stroke-width="1"/>
+          <circle cx="15" cy="15" r="1" fill="#00c8ff"/>
+        </svg>
+      </div>
+      <div class="tab-lbl">冒險</div>
+    </div>
+    <div class="tab-item" id="atab-market" onclick="goAdvPage('market')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none"><path d="M3 6h18l-2 9H5L3 6z" stroke="#00c8ff" stroke-width="1.3"/><path d="M3 6L2 3H1" stroke="#00c8ff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="20" r="1.2" fill="#00c8ff"/><circle cx="16" cy="20" r="1.2" fill="#00c8ff"/></svg>
+      <div class="tab-lbl">市集</div>
+    </div>
+    <div class="tab-item" id="atab-smith" onclick="goAdvPage('lifeskill')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none"><line x1="12" y1="22" x2="12" y2="13" stroke="#00c8ff" stroke-width="1.4" stroke-linecap="round"/><path d="M12 13 Q14 9 18 8 Q17 12 13 14 Z" fill="#00c8ff" stroke="#00c8ff" stroke-width="0.3"/><path d="M12 16 Q10 13 7 13 Q8 17 12 17 Z" fill="rgba(0,200,255,0.5)" stroke="#00c8ff" stroke-width="0.3"/></svg>
+      <div class="tab-lbl">生活</div>
+    </div>
+</div>
+<script src="js/main.js"></script>
+<!-- 通用確認框 -->
+<div id="g-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center;">
+  <div style="background:#060e1a;border:1px solid rgba(0,200,255,.3);border-radius:12px;padding:24px 20px;width:80%;max-width:300px;text-align:center;">
+    <div id="g-confirm-msg" style="font-family:var(--font-mono);font-size:14px;color:#fff;letter-spacing:1px;margin-bottom:20px;line-height:1.6;"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="gConfirmResolve(false)" style="flex:1;padding:10px;font-family:var(--font-mono);font-size:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:var(--text-sub);border-radius:8px;cursor:pointer;letter-spacing:1px;">取消</button>
+      <button onclick="gConfirmResolve(true)" style="flex:1;padding:10px;font-family:var(--font-mono);font-size:12px;background:rgba(0,200,255,.15);border:1px solid rgba(0,200,255,.4);color:#00c8ff;border-radius:8px;cursor:pointer;letter-spacing:1px;">確認</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

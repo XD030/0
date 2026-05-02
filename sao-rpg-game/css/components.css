@@ -1,0 +1,236 @@
+/* ========================================================================
+ * components.css — 跨多個 feature 共用的元件樣式
+ *
+ * 章節:
+ *   1. 滑桿(Slider)— 任務數值輸入,日後可重用於商店數量等
+ *   2. 下拉選單內容(Dropdown content)— 容器在 layout.css,這裡只放裡面的 item
+ *      與依分類(裝備 / 技能 / 製造)變體
+ *   3. 詳情面板內容(Detail content)— 容器在 layout.css,這裡放 task list 樣式
+ *   4. 生活技能 FAB(浮動按鈕 + 弧形展開選單)
+ *   5. 生活技能左側抽屜(Life Drawer)— 含計時器快覽 mini timers
+ *
+ * 不放這裡:
+ *   - 任何只服務一個 feature 的樣式(那些去 quest.css / character.css /
+ *     battle.css / skills.css)
+ *   - 通用容器樣式 .dropdown-overlay / .detail-overlay(在 layout.css)
+ * ======================================================================== */
+
+
+/* ════════════════════════════════════════════════
+ * 1. 滑桿(Slider)
+ * ════════════════════════════════════════════════ */
+.slider-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.72);
+  display:none;align-items:flex-end;justify-content:center;
+  visibility:hidden;pointer-events:none;
+}
+.slider-overlay.show{display:flex;visibility:visible;pointer-events:auto;}
+.slider-panel{
+  width:100%;max-width:390px;background:#060e1a;
+  border-top:1px solid var(--border);
+  border-left:1px solid var(--border);
+  border-right:1px solid var(--border);
+  padding:var(--s5) var(--s4) var(--s8);
+}
+.slider-overlay.show .slider-panel{animation:slideUp .22s ease;}
+.slider-title{
+  font-family:var(--font-mono);font-size:12px;letter-spacing:2px;color:var(--blue);
+  margin-bottom:var(--s4);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.slider-close{
+  font-size:14px;color:var(--text-sub);cursor:pointer;
+  padding:2px var(--s2);border:1px solid #1a3a5a;
+}
+.slider-val-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--s3);}
+.slider-current{font-family:var(--font-mono);font-size:28px;color:#fff;line-height:1;}
+.slider-unit{font-family:var(--font-mono);font-size:13px;color:var(--text-sub);margin-left:var(--s2);}
+.slider-range{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--text-sub);margin-top:var(--s1);}
+.slider-input{
+  width:100%;-webkit-appearance:none;appearance:none;
+  height:4px;border-radius:2px;background:rgba(0,200,255,.15);
+  outline:none;margin:var(--s3) 0;
+}
+.slider-input::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--blue);border:2px solid #fff;cursor:pointer;
+  box-shadow:0 0 8px var(--blue-glow);
+}
+.slider-submit{
+  width:100%;padding:var(--s4);
+  background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);
+  font-family:var(--font-mono);font-size:11px;letter-spacing:3px;cursor:pointer;
+  margin-top:var(--s4);
+}
+
+
+/* ════════════════════════════════════════════════
+ * 2. 下拉選單內容(容器在 layout.css)
+ * ════════════════════════════════════════════════ */
+
+/* 預設(裝備風格,橘色) */
+.dropdown-item{
+  display:flex;align-items:center;gap:var(--s3);
+  padding:var(--s3);margin-bottom:var(--s1);
+  border:1px solid rgba(255,102,51,.12);background:rgba(3,8,15,.7);
+  cursor:pointer;
+  font-family:var(--font-zh);font-size:13px;color:var(--text);
+}
+.dropdown-item.empty-opt{color:var(--text-sub);}
+.dropdown-rarity{
+  font-family:var(--font-mono);font-size:9px;
+  padding:1px var(--s2);border:1px solid;margin-left:auto;
+}
+.r-common{color:#6a8a9a;border-color:#6a8a9a;}
+.r-rare  {color:var(--blue);border-color:var(--blue);}
+.r-epic  {color:#cc88ff;border-color:#cc88ff;}
+
+/* 技能風格(紫色)*/
+.skill-dd-panel{
+  border-top-color:rgba(119,85,255,.45);
+  border-left-color:rgba(119,85,255,.28);
+  border-right-color:rgba(119,85,255,.28);
+}
+.skill-title-c{color:var(--purple)!important;}
+.skill-dd-item{border-color:rgba(119,85,255,.12)!important;}
+
+/* 製造風格(琥珀色)*/
+.crft-dd-panel{
+  border-top-color:rgba(255,170,51,.45);
+  border-left-color:rgba(255,170,51,.28);
+  border-right-color:rgba(255,170,51,.28);
+}
+.crft-dd-title-c{color:#ffaa33!important;}
+
+/* 製造選單每列 */
+.crft-dd-row{
+  display:flex;align-items:center;
+  padding:var(--s2) var(--s3);margin-bottom:6px;
+  border:1px solid rgba(255,170,51,.12);background:rgba(3,8,15,.7);
+  gap:var(--s2);cursor:pointer;transition:background .12s;
+  position:relative;overflow:hidden;
+}
+.crft-dd-row::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--rc, rgba(255,170,51,.3));
+  box-shadow:0 0 5px var(--rc, rgba(255,170,51,.3));
+}
+.crft-dd-row:active{background:rgba(255,170,51,.06);}
+.crft-dd-row.selected{border-color:rgba(0,255,150,.35);background:rgba(0,255,150,.05);}
+.crft-dd-row.selected .crft-dd-name{color:#00ff96;}
+.crft-dd-left{flex:1;display:flex;align-items:center;gap:var(--s2);padding-left:6px;}
+.crft-dd-name{font-family:var(--font-zh);font-size:14px;color:var(--text);}
+.crft-dd-name.sel{color:#00ff96;}
+.crft-dd-stock-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:0 6px;border-left:1px solid rgba(255,255,255,.06);
+  margin-left:4px;min-width:44px;
+}
+.crft-dd-stock-lbl{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;}
+.crft-dd-stock-num{font-family:var(--font-mono);font-size:15px;color:var(--text-sub);}
+.crft-dd-stock-num.zero{color:rgba(255,34,68,.5);}
+
+/* 製造數量控制 */
+.crft-dd-qty-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.crft-qty-btn{
+  width:28px;height:28px;
+  border:1px solid rgba(0,255,150,.3);background:transparent;color:#00ff96;
+  font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+.crft-qty-btn:active{background:rgba(0,255,150,.12);}
+.crft-qty-input{
+  width:40px;height:28px;
+  background:rgba(0,0,0,.4);border:1px solid rgba(0,255,150,.25);color:#00ff96;
+  font-family:var(--font-mono);font-size:13px;text-align:center;
+  -moz-appearance:textfield;
+}
+.crft-qty-input::-webkit-inner-spin-button,
+.crft-qty-input::-webkit-outer-spin-button{-webkit-appearance:none;}
+/* 市集 buy/sell 數量 input — 跨瀏覽器藏 spinner 全武器版(三種 appearance + 強制 display:none + !important) */
+.mkt-qty-input{
+  -webkit-appearance:textfield !important;
+  -moz-appearance:textfield !important;
+  appearance:textfield !important;
+}
+.mkt-qty-input::-webkit-inner-spin-button,
+.mkt-qty-input::-webkit-outer-spin-button{
+  -webkit-appearance:none !important;
+  appearance:none !important;
+  display:none !important;
+  width:0 !important;
+  height:0 !important;
+  margin:0 !important;
+}
+.crft-slot-qty-badge{
+  font-family:var(--font-mono);font-size:10px;color:#00ff96;
+  display:block;text-align:center;margin-top:2px;
+}
+
+
+/* ════════════════════════════════════════════════
+ * 3. 詳情面板內容(容器在 layout.css)
+ * ════════════════════════════════════════════════ */
+.detail-sec-title{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--text-sub);
+  margin-bottom:var(--s2);padding-bottom:var(--s1);
+  border-bottom:1px solid rgba(0,200,255,.08);
+}
+.detail-task{
+  display:flex;align-items:center;gap:var(--s2);
+  padding:var(--s2) 0;border-bottom:1px solid rgba(255,255,255,.03);
+  font-size:13px;
+}
+.detail-task:last-child{border-bottom:none;}
+.task-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.done-dot{background:var(--cyan);box-shadow:0 0 4px var(--cyan);}
+.fail-dot{background:var(--red);opacity:.45;}
+.done-name{flex:1;font-family:var(--font-zh);color:#fff;}
+.fail-name{flex:1;font-family:var(--font-zh);color:var(--text-sub);text-decoration:line-through;}
+.detail-status{font-family:var(--font-mono);font-size:11px;}
+.detail-empty-msg{
+  font-family:var(--font-mono);font-size:11px;color:var(--text-sub);
+  padding:var(--s4) 0;text-align:center;
+}
+
+
+/* ════════════════════════════════════════════════
+ * 4. 生活技能 FAB(浮動按鈕)+ 弧形展開選單
+ * ════════════════════════════════════════════════ */
+.life-fab{
+  position:absolute;right:16px;bottom:90px;z-index:600;
+  width:50px;height:50px;pointer-events:all;
+}
+.life-fab-btn{
+  width:50px;height:50px;border-radius:50%;
+  background:linear-gradient(135deg,#00c8ff,#0088cc);
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 12px rgba(0,200,255,.5);
+  pointer-events:all;position:relative;z-index:2;
+}
+.life-fab-icon{font-size:22px;line-height:1;}
+
+.life-radial{
+  position:fixed;width:0;height:0;pointer-events:none;
+  opacity:0;transition:opacity .2s;z-index:599;
+}
+.life-radial.open{opacity:1;pointer-events:none;}
+.life-radial-item{
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;pointer-events:none;
+}
+.life-radial.open .life-radial-item{pointer-events:all;}
+.life-radial-item:active{transform:scale(.9);}
+.life-radial-item-circle{
+  width:44px;height:44px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border:1px solid;
+  box-shadow:0 2px 8px rgba(0,0,0,.5);
+  background:rgba(3,8,15,.95);flex-shrink:0;gap:1px;
+}
+.life-radial-item-icon{font-size:17px;line-height:1;}
+.life-radial-item-lv{font-family:var(--font-mono);font-size:7px;opacity:.8;letter-spacing:.5px;}
+
+

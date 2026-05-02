@@ -1,0 +1,161 @@
+/* ========================================================================
+ * character.css — 角色屬性、雷達圖、屬性分配 UI
+ *
+ * 內容:
+ *   1. 角色卡片 .char-card / .card-top / .char-name-s / .char-sub
+ *   2. 等級 .level-box / .level-num / .level-lbl
+ *   3. HP/EXP 條容器 .bars-s
+ *   4. 待分配點數提示 .pts-banner / .pts-big
+ *   5. 雷達圖區塊 .radar-section
+ *   6. 主屬性列表 .r-attr-list / .r-attr-row / .r-attr-* 系列
+ *   7. 點數分配按鈕 .r-attr-alloc / .r-alloc-btn / .r-alloc-val / .r-alloc-pending
+ *   8. 確認分配按鈕 .r-confirm-btn
+ *   9. 細屬性列表 .attr-item-s 與相關
+ *  10. 屬性顏色 helper .c-XXX / .d-XXX / .f-XXX
+ *
+ * 不放這裡:
+ *   - 裝備格 .equip-* / .gear-* → equipment.css (Phase 5)
+ *   - 技能槽 .slot-* → equipment.css 或 skills.css
+ *   - 屬性標章 .attr-badge → quest.css (跟任務一起出現)
+ *   - 雷達 SVG 內部繪製是 character.js 用 inline style,不需 CSS
+ * ======================================================================== */
+
+/* 角色卡片 */
+.char-card{
+  border:1px solid var(--border);
+  background:linear-gradient(145deg,#060e1a,#03080f);
+  padding:var(--s5);margin-bottom:var(--s3);
+  overflow:hidden;
+}
+.card-top{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  margin-bottom:var(--s4);
+}
+.char-name-s{
+  font-family:var(--font-mono);font-size:16px;color:#fff;
+  letter-spacing:3px;text-shadow:0 0 16px var(--blue-glow);
+}
+.char-sub{
+  font-family:var(--font-mono);font-size:10px;color:var(--text-sub);
+  letter-spacing:2px;margin-top:var(--s1);
+}
+
+/* 等級顯示 */
+.level-box{text-align:right;}
+.level-num{
+  font-family:var(--font-mono);font-size:30px;color:var(--blue);
+  line-height:1;text-shadow:0 0 14px var(--blue-glow);
+}
+.level-lbl{
+  font-family:var(--font-mono);font-size:10px;color:var(--text-sub);
+  letter-spacing:2px;
+}
+
+/* HP / EXP / MP 條容器 */
+.bars-s{
+  margin-bottom:var(--s4);
+  display:flex;flex-direction:column;gap:var(--s2);
+}
+
+/* 待分配點數 banner */
+.pts-banner{
+  display:none;align-items:center;gap:var(--s2);
+  padding:var(--s2) var(--s3);margin-bottom:var(--s3);
+  border:1px solid rgba(0,255,204,.28);
+  background:rgba(0,255,204,.05);
+  font-family:var(--font-mono);font-size:11px;color:var(--cyan);
+}
+.pts-banner.show{display:flex;}
+.pts-big{font-size:15px;font-weight:bold;}
+
+/* 雷達圖區塊 */
+.radar-section{display:flex;align-items:center;gap:var(--s3);}
+
+/* 主屬性列表(Reserve 頁) */
+.r-attr-list{flex:1;display:flex;flex-direction:column;gap:8px;}
+.r-attr-row{display:flex;flex-direction:column;gap:3px;cursor:default;}
+.r-attr-row.allocable{cursor:pointer;}
+.r-attr-top{display:flex;justify-content:space-between;align-items:baseline;}
+.r-attr-key{font-family:var(--font-mono);font-size:13px;letter-spacing:2px;}
+.r-attr-bar-track{
+  width:100%;height:3px;
+  background:rgba(255,255,255,.08);
+  border-radius:2px;overflow:hidden;
+}
+.r-attr-bar-fill{height:100%;border-radius:2px;transition:width .5s;}
+.r-attr-num{font-family:var(--font-mono);font-size:13px;color:#fff;}
+.r-attr-bonus{
+  font-family:var(--font-mono);font-size:13px;color:var(--gold);
+  margin-left:4px;
+}
+
+/* 屬性加減列(分配模式)*/
+.r-attr-alloc{display:flex;align-items:center;gap:6px;}
+.r-alloc-btn{
+  width:22px;height:22px;
+  border:1px solid rgba(0,255,204,.3);background:transparent;
+  color:var(--cyan);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;line-height:1;
+}
+.r-alloc-btn:active{background:rgba(0,255,204,.1);}
+.r-alloc-btn:disabled{opacity:.25;cursor:not-allowed;}
+.r-alloc-val{
+  font-family:var(--font-mono);font-size:13px;color:#fff;
+  min-width:18px;text-align:center;
+}
+.r-alloc-pending{
+  font-family:var(--font-mono);font-size:11px;color:var(--cyan);
+}
+
+/* 確認分配按鈕 */
+.r-confirm-btn{
+  width:100%;margin-top:var(--s3);padding:10px;
+  font-family:var(--font-mono);font-size:11px;letter-spacing:3px;
+  border:1px solid rgba(0,255,204,.4);
+  color:var(--cyan);background:rgba(0,255,204,.04);
+  cursor:pointer;position:relative;
+}
+.r-confirm-btn::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1.5px;
+  background:var(--cyan);box-shadow:0 0 8px var(--cyan);
+}
+.r-confirm-btn:active{background:rgba(0,255,204,.12);}
+
+/* 細屬性列表(s 後綴 = small / status 樣式) */
+.attr-item-s{
+  display:flex;align-items:center;gap:var(--s2);
+  cursor:default;padding:3px 0;
+}
+.attr-item-s.allocable{cursor:pointer;}
+.attr-item-s.allocable:active{background:rgba(0,255,204,.05);}
+.attr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.attr-key-s{font-family:var(--font-mono);font-size:13px;letter-spacing:1px;width:34px;}
+.attr-right{flex:1;display:flex;align-items:center;gap:var(--s2);}
+.attr-prog-track{
+  flex:1;height:4px;
+  background:rgba(255,255,255,0.06);
+  border-radius:2px;overflow:hidden;
+}
+.attr-prog-fill{height:100%;border-radius:2px;transition:width .5s ease;}
+.attr-num-s{
+  font-family:var(--font-mono);font-size:14px;color:#fff;
+  width:22px;text-align:right;flex-shrink:0;
+}
+.attr-add{
+  font-size:13px;color:var(--cyan);opacity:0;
+  transition:opacity .15s;margin-left:2px;
+}
+.attr-item-s.allocable .attr-add{opacity:.4;}
+
+/* 屬性顏色 helper:
+ *   .c-XXX = 文字顏色
+ *   .d-XXX = 點 / 純背景色
+ *   .f-XXX = 漸層填色(條狀使用)
+ */
+.c-STR{color:#ff7040;}    .d-STR{background:#ff7040;}    .f-STR{background:linear-gradient(90deg,#cc3010,#ff7040);}
+.c-VIT{color:var(--blue);}.d-VIT{background:var(--blue);}.f-VIT{background:linear-gradient(90deg,#006699,var(--blue));}
+.c-DEX{color:var(--gold);}.d-DEX{background:var(--gold);}.f-DEX{background:linear-gradient(90deg,#997700,var(--gold));}
+.c-AGI{color:var(--cyan);}.d-AGI{background:var(--cyan);}.f-AGI{background:linear-gradient(90deg,#009966,var(--cyan));}
+.c-INT{color:#cc88ff;}    .d-INT{background:#cc88ff;}    .f-INT{background:linear-gradient(90deg,#7733cc,#cc88ff);}
+.c-LUK{color:#ff88cc;}    .d-LUK{background:#ff88cc;}    .f-LUK{background:linear-gradient(90deg,#cc3388,#ff88cc);}

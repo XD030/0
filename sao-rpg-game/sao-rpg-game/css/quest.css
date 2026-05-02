@@ -1,0 +1,97 @@
+/* ========================================================================
+ * quest.css — 任務 / 習慣系統樣式
+ *
+ * 內容:
+ *   - 任務卡片 .task-card 與三種變體 .daily-card / .personal-card / .timed-card
+ *   - 完成狀態 .check-ring 與 .done 樣式
+ *   - 任務文字資訊 .task-info / .task-name / .task-meta
+ *   - 屬性標章 .attr-badge 與所有屬性 .attr-STR / .attr-VIT / ... / .attr-COOK
+ *   - 刪除按鈕 .del-btn
+ *   - 空狀態 .empty-state / .empty-icon / .empty-title / .empty-hint
+ *   - @keyframes taskIn 任務出現動畫
+ *
+ * 不放這裡:
+ *   - 區塊摺疊容器(.section-header / .sec-title / .collapsible)在 base.css
+ *   - 滑桿 UI(.slider-*)在 components.css
+ * ======================================================================== */
+
+/* 任務卡片 */
+.task-card{
+  border:1px solid var(--border);background:var(--bg2);
+  padding:var(--s3);margin-bottom:var(--s1);
+  display:flex;align-items:center;gap:var(--s3);
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:all .15s;
+  animation:taskIn .25s ease both;
+}
+@keyframes taskIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+
+/* 卡片左側顏色條(依任務類型而異) */
+.task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;}
+.task-card.daily-card::before   {background:var(--blue);   box-shadow:0 0 6px var(--blue);}
+.task-card.personal-card::before{background:var(--purple); box-shadow:0 0 6px var(--purple);}
+.task-card.timed-card::before   {background:var(--orange); box-shadow:0 0 6px var(--orange);}
+
+/* 完成狀態 */
+.task-card.done{opacity:.38;}
+.task-card.done .task-name{text-decoration:line-through;color:var(--text-sub);}
+
+.check-ring{
+  width:22px;height:22px;border-radius:50%;
+  border:1.5px solid var(--text-dim);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  font-size:11px;color:transparent;
+  transition:all .3s;
+}
+.daily-card.done    .check-ring{border-color:var(--cyan);   background:rgba(0,255,204,.12); color:var(--cyan);}
+.personal-card.done .check-ring{border-color:var(--purple); background:rgba(119,85,255,.12);color:var(--purple);}
+.timed-card.done    .check-ring{border-color:var(--orange); background:rgba(255,102,51,.12);color:var(--orange);}
+
+/* 任務文字 */
+.task-info{flex:1;min-width:0;}
+.task-name{
+  font-family:var(--font-zh);font-size:16px;font-weight:500;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.task-meta{
+  font-family:var(--font-mono);font-size:12px;color:var(--text-sub);
+  margin-top:2px;
+}
+
+/* 屬性標章 */
+.attr-badge{
+  font-family:var(--font-mono);font-size:11px;
+  padding:4px var(--s2);border:1px solid;
+  letter-spacing:1px;flex-shrink:0;line-height:1.4;
+}
+/* 戰鬥屬性 */
+.attr-STR{color:#ff7040;        border-color:#ff7040;}
+.attr-VIT{color:var(--blue);    border-color:var(--blue);}
+.attr-DEX{color:var(--gold);    border-color:var(--gold);}
+.attr-AGI{color:var(--cyan);    border-color:var(--cyan);}
+.attr-INT{color:#cc88ff;        border-color:#cc88ff;}
+.attr-LUK{color:#ff88cc;        border-color:#ff88cc;}
+/* 生活屬性 */
+.attr-HUNT{color:#ff6644;       border-color:#ff6644;}
+.attr-GATH{color:#88dd44;       border-color:#88dd44;}
+.attr-MINE{color:#aaaaaa;       border-color:#aaaaaa;}
+.attr-CRFT{color:#ffaa33;       border-color:#ffaa33;}
+.attr-COOK{color:#ff88aa;       border-color:#ff88aa;}
+
+/* 刪除按鈕 */
+.del-btn{
+  width:28px;height:28px;
+  border:1px solid rgba(255,34,68,.25);background:transparent;
+  color:rgba(255,34,68,.45);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;cursor:pointer;flex-shrink:0;
+}
+
+/* 空狀態(無任務時顯示) */
+.empty-state{
+  text-align:center;padding:var(--s8) var(--s4);
+  display:flex;flex-direction:column;align-items:center;gap:var(--s3);
+}
+.empty-icon{opacity:.35;}
+.empty-title{font-family:var(--font-mono);font-size:13px;color:#8abcd8;letter-spacing:2px;}
+.empty-hint {font-family:var(--font-zh);  font-size:14px;color:#6aa0bc;line-height:1.7;}

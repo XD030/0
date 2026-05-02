@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(node --check /tmp/_combined.js)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}
