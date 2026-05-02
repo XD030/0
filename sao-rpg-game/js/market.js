@@ -47,24 +47,37 @@ function switchMarketTab(tab, el){
   marketTab=tab; marketFilter='all'; marketSubFilter='all'; sellStep=0; sellCategory=null; sellItem=null;
   marketBuyMulti=false; marketBuySelected=new Map();
   marketSellMulti=false; marketSellSelected=new Map();
-  document.querySelectorAll('#market-tabs .bag-tab').forEach(t=>{
+  syncMarketTabVisual();
+  renderMarket();
+}
+
+/* 同步上排 tab 的 active class + inline 顏色到 marketTab 變數現值
+ * 進場 / renderMarket 都會呼叫,避免跳到別頁回來時殘留上次離開的視覺。 */
+function syncMarketTabVisual(){
+  const tabs=document.querySelectorAll('#market-tabs .bag-tab');
+  if(!tabs.length)return;
+  tabs.forEach(t=>{
     t.classList.remove('active');
     t.style.color='';t.style.borderBottomColor='';t.style.textShadow='';
   });
-  el.classList.add('active');
-  if(tab==='buy'){
-    el.style.color='var(--blue)';el.style.borderBottomColor='var(--blue)';el.style.textShadow='0 0 10px rgba(0,200,255,.5)';
-  } else {
-    el.style.color='#ffaa33';el.style.borderBottomColor='#ffaa33';el.style.textShadow='0 0 10px rgba(255,170,51,.5)';
+  const active=document.querySelector(`#market-tabs .bag-tab[data-tab="${marketTab}"]`);
+  if(active){
+    active.classList.add('active');
+    if(marketTab==='buy'){
+      active.style.color='var(--blue)';active.style.borderBottomColor='var(--blue)';active.style.textShadow='0 0 10px rgba(0,200,255,.5)';
+    } else {
+      active.style.color='#ffaa33';active.style.borderBottomColor='#ffaa33';active.style.textShadow='0 0 10px rgba(255,170,51,.5)';
+    }
   }
   const filterRow=document.getElementById('market-filter-row');
-  if(tab==='buy'){
-    filterRow.style.display='flex';
-    buildMarketFilterBar();
-  } else {
-    filterRow.style.display='none';
+  if(filterRow){
+    if(marketTab==='buy'){
+      filterRow.style.display='flex';
+      buildMarketFilterBar();
+    } else {
+      filterRow.style.display='none';
+    }
   }
-  renderMarket();
 }
 
 const MARKET_CAT_COLORS={weapon:{on:'background:rgba(0,200,255,.12);color:#00c8ff;border-color:rgba(0,200,255,.5);',off:'color:rgba(0,200,255,.4);border-color:rgba(0,200,255,.2);'},armor:{on:'background:rgba(255,170,51,.12);color:#ffaa33;border-color:rgba(255,170,51,.5);',off:'color:rgba(255,170,51,.4);border-color:rgba(255,170,51,.2);'},material:{on:'background:rgba(0,255,150,.12);color:#00ff96;border-color:rgba(0,255,150,.5);',off:'color:rgba(0,255,150,.4);border-color:rgba(0,255,150,.2);'},item:{on:'background:rgba(180,100,255,.12);color:#b464ff;border-color:rgba(180,100,255,.5);',off:'color:rgba(180,100,255,.4);border-color:rgba(180,100,255,.2);}'}};
@@ -153,6 +166,8 @@ function renderMarket(){
   const list=document.getElementById('market-list');
   if(!list){showToast('// market-list not found');return;}
   try{
+  // Tab 視覺同步:跳到別頁回來時,把上排 tab + filter bar 對齊到 marketTab 現值,不讓殘留樣式遺留
+  syncMarketTabVisual();
   // 同步顯示實際金幣
   const _s=initState();
   const goldEl=document.getElementById('market-gold');
@@ -435,9 +450,10 @@ function renderSellFromBag(){
         onmouseup="endMarketSellHold()" onmouseleave="endMarketSellHold()"
         oncontextmenu="marketSellCtxClear('${uid}','${item._cat}','${item.key}',event)">
         <div class="bag-item-rarity" style="background:${color};box-shadow:0 0 6px ${color}88;"></div>
+        <div style="width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;margin-left:6px;">${item._cat==='item'?(item.itemType==='potion'?'🧪':item.itemType==='food'?'🍖':'📦'):(()=>{try{const p=Object.values(GATH_DECK).flat().find(([,k])=>k===item.key);return p?p[3]:'📦';}catch(e){return'📦';}})()}</div>
         <div class="bag-item-name" style="${isSel?'color:#44dd88;':''}">${getDisplayName(item)}</div>
+        ${item.qty>1?`<div class="bag-item-qty" style="margin-right:6px;">×${item.qty}</div>`:''}
         ${qtyCtrl}
-        <div class="crft-dd-stock-wrap"><span class="crft-dd-stock-lbl">持有</span><span class="crft-dd-stock-num">${item.qty}</span></div>
         <div style="font-family:var(--font-mono);font-size:13px;color:#44dd88;flex-shrink:0;">${sellPrice} G</div>
       </div>`;
     }

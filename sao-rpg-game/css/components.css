@@ -148,20 +148,15 @@
 }
 .crft-qty-input::-webkit-inner-spin-button,
 .crft-qty-input::-webkit-outer-spin-button{-webkit-appearance:none;}
-/* 市集 buy/sell 數量 input — 跨瀏覽器藏 spinner 全武器版(三種 appearance + 強制 display:none + !important) */
+/* 市集 buy/sell 數量 input — 標準 appearance 須帶 !important 才壓得過 user agent stylesheet(DevTools 確認) */
 .mkt-qty-input{
-  -webkit-appearance:textfield !important;
-  -moz-appearance:textfield !important;
+  -moz-appearance:textfield;
   appearance:textfield !important;
 }
 .mkt-qty-input::-webkit-inner-spin-button,
 .mkt-qty-input::-webkit-outer-spin-button{
-  -webkit-appearance:none !important;
-  appearance:none !important;
-  display:none !important;
-  width:0 !important;
-  height:0 !important;
-  margin:0 !important;
+  -webkit-appearance:none;
+  margin:0;
 }
 .crft-slot-qty-badge{
   font-family:var(--font-mono);font-size:10px;color:#00ff96;
