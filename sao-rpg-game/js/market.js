@@ -21,7 +21,9 @@
  *                    marketSellTap / marketSellCancel
  *      - 數量調整: mktSellQtyStep / mktSellQtyInput / startMktSellQty /
  *                  stopMktSellQty
- *      - 確認賣出: marketSellConfirm / execMarketSellSelected
+ *      - 確認賣出: marketSellConfirm / updateSellConfirmTotal /
+ *                  confirmSellWithPrices / cancelSellConfirm /
+ *                  execMarketSellSelected(customPrices)
  *      - 舊單品流: sellSelectItem / confirmSell
  *
  * 依賴:
@@ -501,6 +503,8 @@ let _mktSellHoldTimer=null;
 let _mktSellHoldTimer2=null;
 let _mktSellHoldInterval=null;
 let _mktSellHoldFired=false; // 長按已觸發 → 抑制隨後的 click
+// 售出確認模態的 transient buffer:marketSellConfirm 開啟時填入,confirm/cancel 後清為 null
+let _sellConfirmList=null;
 function startMarketSellHold(uid,cat,key,e){
   if(e && e.target && e.target.closest && e.target.closest('.mkt-qty-ctrl')) return;
   _mktSellHoldFired=false;
@@ -579,31 +583,117 @@ function stopMktSellQty(){
 function marketSellConfirm(){
   if(!marketSellSelected.size)return;
   const s=initState();
-  let totalEarn=0;const sellList=[];
+  // 收集車內每筆 → 計算預設單價、抓顯示名稱(武器走 getDisplayName 含 customName,並補 +N 強化)
+  const sellList=[];
   marketSellSelected.forEach((qty,selKey)=>{
     const[uid,cat,key]=selKey.split('|');
     let sp=0,name='';
     if(cat==='material'){const def=getMaterialDef(key);sp=Math.floor((def?.basePrice||50)*0.5)||20;name=def?.name||key;}
-    else if(cat==='weapon'){const w=(s.bag?.weapons||[]).find(w=>w.uid===uid);sp=w?.sellPrice||100;name=w?.name||key;}
-    else if(cat==='armor'){const a=(s.bag?.armors||[]).find(a=>a.uid===uid);sp=a?.sellPrice||80;name=a?.name||key;}
+    else if(cat==='weapon'){const w=(s.bag?.weapons||[]).find(w=>w.uid===uid);sp=w?.sellPrice||100;name=(getDisplayName(w)||key)+(w?.enhance>0?` +${w.enhance}`:'');}
+    else if(cat==='armor'){const a=(s.bag?.armors||[]).find(a=>a.uid===uid);sp=a?.sellPrice||80;name=(a?.name||key)+(a?.enhance>0?` +${a.enhance}`:'');}
     else if(cat==='item'){const mi=getConsumableDef(key);sp=Math.floor((mi?.basePrice||50)*0.5)||25;name=mi?.name||key;}
-    totalEarn+=sp*qty;sellList.push({uid,cat,key,qty,name,sp});
+    sellList.push({selKey,uid,cat,key,qty,name,sp});
   });
-  const nameStr=sellList.length===1?`${sellList[0].name}${sellList[0].qty>1?' ×'+sellList[0].qty:''}`:sellList.slice(0,3).map(i=>`${i.name}${i.qty>1?' ×'+i.qty:''}`).join('、')+(sellList.length>3?` 等${sellList.length}種`:'');
+  _sellConfirmList=sellList;
+  const totalDefault=sellList.reduce((sum,i)=>sum+i.sp*i.qty,0);
+
   let dlg=document.getElementById('sell-confirm-dlg');
   if(!dlg){dlg=document.createElement('div');dlg.id='sell-confirm-dlg';document.body.appendChild(dlg);}
-  gConfirm(`售出 ${nameStr}？\n+${totalEarn} G`, ok=>{if(ok)execMarketSellSelected();});
+  dlg.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#060e1a;border:1px solid rgba(68,221,136,.35);border-radius:12px;padding:18px 16px;width:100%;max-width:340px;max-height:80vh;display:flex;flex-direction:column;">
+      <div style="font-family:var(--font-mono);font-size:13px;color:#44dd88;letter-spacing:2px;text-align:center;margin-bottom:12px;">// 售出物品</div>
+      <div id="sell-confirm-list" style="overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;padding-right:4px;">
+        ${sellList.map((it,idx)=>`<div style="display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:rgba(68,221,136,.04);border:1px solid rgba(68,221,136,.15);border-radius:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <span style="font-family:var(--font-zh);font-size:14px;color:#fff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.name}</span>
+            ${it.qty>1?`<span style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.6);flex-shrink:0;">×${it.qty}</span>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;">單價</span>
+            <input class="sell-price-input" data-idx="${idx}" type="number" min="0" value="${it.sp}" oninput="updateSellConfirmTotal()"
+              style="width:64px;height:24px;text-align:right;background:rgba(0,0,0,.4);border:1px solid rgba(68,221,136,.35);color:#44dd88;font-family:var(--font-mono);font-size:12px;outline:none;padding:0 5px;">
+            <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);">G</span>
+            <span style="flex:1;text-align:right;font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.5);">小計 <span class="sell-subtotal" data-idx="${idx}">${it.sp*it.qty}</span> G</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.5);letter-spacing:1px;">總計</span>
+        <span id="sell-confirm-total" style="font-family:var(--font-mono);font-size:16px;color:#44dd88;letter-spacing:1px;font-weight:bold;">+${totalDefault} G</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="cancelSellConfirm()" style="flex:1;padding:10px;font-family:var(--font-mono);font-size:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:var(--text-sub);border-radius:8px;cursor:pointer;letter-spacing:1px;">取消</button>
+        <button onclick="confirmSellWithPrices()" style="flex:1;padding:10px;font-family:var(--font-mono);font-size:12px;background:rgba(68,221,136,.15);border:1px solid rgba(68,221,136,.4);color:#44dd88;border-radius:8px;cursor:pointer;letter-spacing:1px;">確認售出</button>
+      </div>
+    </div>
+  </div>`;
 }
-function execMarketSellSelected(){
+
+function updateSellConfirmTotal(){
+  if(!_sellConfirmList)return;
+  const inputs=document.querySelectorAll('#sell-confirm-list .sell-price-input');
+  let total=0;
+  inputs.forEach(inp=>{
+    const idx=parseInt(inp.dataset.idx);
+    const it=_sellConfirmList[idx];if(!it)return;
+    const price=Math.max(0,parseInt(inp.value)||0);
+    const sub=price*it.qty;
+    total+=sub;
+    const subEl=document.querySelector(`#sell-confirm-list .sell-subtotal[data-idx="${idx}"]`);
+    if(subEl)subEl.textContent=sub;
+  });
+  const totalEl=document.getElementById('sell-confirm-total');
+  if(totalEl)totalEl.textContent='+'+total+' G';
+}
+
+function confirmSellWithPrices(){
+  if(!_sellConfirmList){cancelSellConfirm();return;}
+  // 從 input 抽出每筆自訂單價
+  const customPrices=new Map();
+  document.querySelectorAll('#sell-confirm-list .sell-price-input').forEach(inp=>{
+    const idx=parseInt(inp.dataset.idx);
+    const it=_sellConfirmList[idx];if(!it)return;
+    const price=Math.max(0,parseInt(inp.value)||0);
+    customPrices.set(it.selKey,price);
+  });
+  const dlg=document.getElementById('sell-confirm-dlg');
+  if(dlg)dlg.innerHTML='';
+  _sellConfirmList=null;
+  execMarketSellSelected(customPrices);
+}
+
+function cancelSellConfirm(){
+  const dlg=document.getElementById('sell-confirm-dlg');
+  if(dlg)dlg.innerHTML='';
+  _sellConfirmList=null;
+  // 不清 marketSellSelected,讓玩家可重新打開 modal 修改價格
+}
+
+function execMarketSellSelected(customPrices){
   const s=initState();
   let totalEarn=0;
   marketSellSelected.forEach((qty,selKey)=>{
     const[uid,cat,key]=selKey.split('|');
+    const useCustom=customPrices&&customPrices.has(selKey);
+    const customUnit=useCustom?customPrices.get(selKey):0;
     for(let i=0;i<qty;i++){
-      if(cat==='material'){if((s.bag.materials[key]||0)>0){s.bag.materials[key]--;if(!s.bag.materials[key])delete s.bag.materials[key];const def=getMaterialDef(key);totalEarn+=Math.floor((def?.basePrice||50)*0.5)||20;}}
-      else if(cat==='weapon'){const idx=(s.bag.weapons||[]).findIndex(w=>w.uid===uid);if(idx>=0){totalEarn+=s.bag.weapons[idx].sellPrice||100;s.bag.weapons.splice(idx,1);break;}}
-      else if(cat==='armor'){const idx=(s.bag.armors||[]).findIndex(a=>a.uid===uid);if(idx>=0){totalEarn+=s.bag.armors[idx].sellPrice||80;s.bag.armors.splice(idx,1);break;}}
-      else if(cat==='item'){if((s.bag.items[key]||0)>0){s.bag.items[key]--;if(!s.bag.items[key])delete s.bag.items[key];const mi=getConsumableDef(key);totalEarn+=Math.floor((mi?.basePrice||50)*0.5)||25;}}
+      if(cat==='material'){
+        if((s.bag.materials[key]||0)>0){
+          s.bag.materials[key]--;if(!s.bag.materials[key])delete s.bag.materials[key];
+          totalEarn+=useCustom?customUnit:(Math.floor((getMaterialDef(key)?.basePrice||50)*0.5)||20);
+        }
+      } else if(cat==='weapon'){
+        const idx=(s.bag.weapons||[]).findIndex(w=>w.uid===uid);
+        if(idx>=0){totalEarn+=useCustom?customUnit:(s.bag.weapons[idx].sellPrice||100);s.bag.weapons.splice(idx,1);break;}
+      } else if(cat==='armor'){
+        const idx=(s.bag.armors||[]).findIndex(a=>a.uid===uid);
+        if(idx>=0){totalEarn+=useCustom?customUnit:(s.bag.armors[idx].sellPrice||80);s.bag.armors.splice(idx,1);break;}
+      } else if(cat==='item'){
+        if((s.bag.items[key]||0)>0){
+          s.bag.items[key]--;if(!s.bag.items[key])delete s.bag.items[key];
+          totalEarn+=useCustom?customUnit:(Math.floor((getConsumableDef(key)?.basePrice||50)*0.5)||25);
+        }
+      }
     }
   });
   s.character.gold=(s.character.gold||0)+totalEarn;
