@@ -599,6 +599,7 @@ function marketSellConfirm(){
 
   let dlg=document.getElementById('sell-confirm-dlg');
   if(!dlg){dlg=document.createElement('div');dlg.id='sell-confirm-dlg';document.body.appendChild(dlg);}
+  dlg.style.display='block'; // index.html 那個 <div id="sell-confirm-dlg"> 自帶 inline display:none,要顯式打開
   dlg.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
     <div style="background:#060e1a;border:1px solid rgba(68,221,136,.35);border-radius:12px;padding:18px 16px;width:100%;max-width:340px;max-height:80vh;display:flex;flex-direction:column;">
       <div style="font-family:var(--font-mono);font-size:13px;color:#44dd88;letter-spacing:2px;text-align:center;margin-bottom:12px;">// 售出物品</div>
@@ -657,14 +658,14 @@ function confirmSellWithPrices(){
     customPrices.set(it.selKey,price);
   });
   const dlg=document.getElementById('sell-confirm-dlg');
-  if(dlg)dlg.innerHTML='';
+  if(dlg){dlg.innerHTML='';dlg.style.display='none';}
   _sellConfirmList=null;
   execMarketSellSelected(customPrices);
 }
 
 function cancelSellConfirm(){
   const dlg=document.getElementById('sell-confirm-dlg');
-  if(dlg)dlg.innerHTML='';
+  if(dlg){dlg.innerHTML='';dlg.style.display='none';}
   _sellConfirmList=null;
   // 不清 marketSellSelected,讓玩家可重新打開 modal 修改價格
 }
