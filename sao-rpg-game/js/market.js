@@ -611,7 +611,7 @@ function marketSellConfirm(){
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;">單價</span>
-            <input class="sell-price-input" data-idx="${idx}" type="number" min="0" value="${it.sp}" oninput="updateSellConfirmTotal()"
+            <input class="sell-price-input mkt-qty-input" data-idx="${idx}" type="number" min="0" value="${it.sp}" oninput="updateSellConfirmTotal()"
               style="width:64px;height:24px;text-align:right;background:rgba(0,0,0,.4);border:1px solid rgba(68,221,136,.35);color:#44dd88;font-family:var(--font-mono);font-size:12px;outline:none;padding:0 5px;">
             <span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);">G</span>
             <span style="flex:1;text-align:right;font-family:var(--font-mono);font-size:11px;color:rgba(255,255,255,.5);">小計 <span class="sell-subtotal" data-idx="${idx}">${it.sp*it.qty}</span> G</span>
