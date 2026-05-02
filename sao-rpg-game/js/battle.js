@@ -378,6 +378,11 @@ function renderAll(){
   if(el('bp-e-max'))el('bp-e-max').textContent='/'+enemy.maxHp;
   if(el('bp-p-bar'))el('bp-p-bar').style.width=Math.max(0,player.hp/player.maxHp*100)+'%';
   if(el('bp-e-bar'))el('bp-e-bar').style.width=Math.max(0,enemy.hp/enemy.maxHp*100)+'%';
+  // 玩家 MP
+  const pmp=player.mp||0, pmaxMp=player.maxMp||1;
+  if(el('bp-p-mp-cur'))el('bp-p-mp-cur').textContent=pmp;
+  if(el('bp-p-mp-max'))el('bp-p-mp-max').textContent=pmaxMp;
+  if(el('bp-p-mp-bar'))el('bp-p-mp-bar').style.width=Math.min(100,(pmp/pmaxMp)*100)+'%';
   if(el('bp-turn'))el('bp-turn').textContent=battle.turn;
   // 僵直條
   const ps=el('bp-p-stagger');const es=el('bp-e-stagger');
@@ -528,15 +533,21 @@ function renderCards(){
 function makeCardHTML(c, locked=false){
   const typeCls=c.type==='atk'?'atk-card':c.type==='def'?'def-card':'spc-card';
   const isSel=selectedCard?.id===c.id;
-  const lockStyle=locked?'opacity:0.4;pointer-events:none;':'';
+  const cost=c.cost||0;
+  const recover=c.recover||0;
+  const noMp = battle && cost>0 && battle.player.mp < cost;
+  const lockStyle=(locked||noMp)?'opacity:0.4;pointer-events:none;':'';
   const iconHTML=`<div class="card-icon-wrap">
     <img class="card-icon-img" src="${IMG[c.imgKey]||''}" alt="${c.name}"
       onerror="this.outerHTML='<div class=\\'card-icon-placeholder\\'>${c.name[0]}</div>'">
   </div>`;
-  return`<div class="battle-card ${typeCls}${isSel?' selected':''}" style="${lockStyle}"
-    onclick="event.stopPropagation();${locked?'':` selectCard('${c.id}')`}"
+  // cost 標籤(右上),recover 標籤(右下)
+  const costBadge = cost>0 ? `<div class="card-cost-badge">${cost}</div>` : '';
+  const recBadge  = recover>0 ? `<div class="card-rec-badge">+${recover}</div>` : '';
+  return`<div class="battle-card ${typeCls}${isSel?' selected':''}${noMp?' no-mp':''}" style="${lockStyle}"
+    onclick="event.stopPropagation();${(locked||noMp)?'':` selectCard('${c.id}')`}"
     ontouchstart="startCardHold('${c.id}')" ontouchend="endCardHold()" oncontextmenu="showTooltip('${c.id}');return false;">
-    ${iconHTML}
+    ${costBadge}${recBadge}${iconHTML}
   </div>`;
 }
 
@@ -595,6 +606,21 @@ function executePlayerCard(card){
       if(autoMode)setTimeout(()=>autoAct(),800);
     },700);
     return;
+  }
+
+  // ── MP 檢查與扣除(Phase α 能量制)──
+  const cardCost = card.cost || 0;
+  if(player.mp < cardCost){
+    showToast(`// MP 不足 (需 ${cardCost})`);
+    selectedCard = null;
+    hideConfirm();
+    renderCards();
+    return;
+  }
+  player.mp = Math.max(0, player.mp - cardCost);
+  const cardRecover = card.recover || 0;
+  if(cardRecover > 0){
+    player.mp = Math.min(player.maxMp, player.mp + cardRecover);
   }
 
   const s=initState();
@@ -760,8 +786,11 @@ function endBattle(result){
   if(!battle)return;
   battle.phase='end';
   mockChar.hp = Math.max(0, battle.player.hp);
-  // 寫回主檔HP
-  const s=initState(); s.character.hp=mockChar.hp; save(s);
+  // 寫回主檔 HP / MP
+  const s=initState();
+  s.character.hp=mockChar.hp;
+  s.character.mp=Math.max(0, Math.min(battle.player.maxMp, battle.player.mp||0));
+  save(s);
   const el=document.getElementById('battle-result');
   const title=document.getElementById('result-title');
   const detail=document.getElementById('result-detail');
@@ -801,7 +830,9 @@ function endBattle(result){
     // 死亡：復活回滿血，直接關閉戰鬥回選層
     const rs=initState();
     const mhp=maxHp(rs.character.level,rs.character.VIT);
+    const mmp=maxMp(rs.character.level,rs.character.INT);
     rs.character.hp=mhp;
+    rs.character.mp=mmp;
     save(rs);
     mockChar.hp=mhp;
     battle=null;
@@ -953,6 +984,15 @@ function updateMapHp(){
   if(cur)cur.textContent=c.hp;
   if(mx)mx.textContent='/'+mhp;
   if(bar)bar.style.width=pct+'%';
+  // MP 條同步(從存檔取最新值)
+  const s=initState();
+  const mp=s.character.mp||0, mmp=maxMp(s.character.level, s.character.INT);
+  const mcur=document.getElementById('map-mp-cur');
+  const mmax=document.getElementById('map-mp-max');
+  const mbar=document.getElementById('map-mp-bar');
+  if(mcur)mcur.textContent=mp;
+  if(mmax)mmax.textContent='/'+mmp;
+  if(mbar)mbar.style.width=Math.min(100,(mp/mmp)*100)+'%';
 }
 
 // ── 渲染格子地圖 ──
@@ -1179,7 +1219,7 @@ function startBattleWith(enemyData){
   mockChar={level:c.level,hp:c.hp,maxHp:mhp,STR:(c.STR||1)+(bonus.STR||0),AGI:(c.AGI||1)+(bonus.AGI||0),DEX:(c.DEX||1)+(bonus.DEX||0),VIT:(c.VIT||1)+(bonus.VIT||0),INT:(c.INT||1)+(bonus.INT||0),LUK:(c.LUK||1)+(bonus.LUK||0)};
   const enemy={...enemyData, hp:enemyData.maxHp, statuses:[], patternIdx:0, stagger:0, stunned:false};
   battle={
-    player:{hp:mockChar.hp,maxHp:mhp,mp:50,maxMp:50,STR:mockChar.STR,AGI:mockChar.AGI,DEX:mockChar.DEX,VIT:mockChar.VIT,INT:mockChar.INT,LUK:mockChar.LUK,statuses:[],stagger:0,stunned:false},
+    player:{hp:mockChar.hp,maxHp:mhp,mp:c.mp||0,maxMp:maxMp(c.level,c.INT+(bonus.INT||0)),STR:mockChar.STR,AGI:mockChar.AGI,DEX:mockChar.DEX,VIT:mockChar.VIT,INT:mockChar.INT,LUK:mockChar.LUK,statuses:[],stagger:0,stunned:false},
     enemy, turn:1, phase:'player',
   };
   autoMode=false; selectedCard=null;

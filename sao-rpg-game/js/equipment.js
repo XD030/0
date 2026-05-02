@@ -223,16 +223,12 @@ function openSkillDD(idx, cb){
   e.onclick=()=>{
     const oldKey=s.skills[idx];
     if(!oldKey){ closeDD('skill'); return; }
-    const oldName=SKILL_OPTIONS.find(sk=>sk.key===oldKey)?.name||oldKey;
     closeDD('skill');
-    gConfirm('移除技能<span style="color:#aa88ff;">【'+oldName+'】</span>?<br><span style="font-size:12px;color:rgba(255,255,255,.4);">熟練度將歸零</span>', ok=>{
-      if(!ok) return;
-      const s2=initState();
-      if(s2.skillProf) s2.skillProf[oldKey]=0;
-      delete s2.skills[idx];
-      save(s2);
-      (cb||renderStatus)();
-    });
+    // 卸下不歸零熟練度,直接卸下
+    const s2=initState();
+    delete s2.skills[idx];
+    save(s2);
+    (cb||renderStatus)();
   };
   list.appendChild(e);
 
@@ -247,24 +243,12 @@ function openSkillDD(idx, cb){
     const profBar='<div style="height:2px;background:rgba(170,136,255,.15);border-radius:1px;margin-top:3px;width:80px;display:inline-block;vertical-align:middle;"><div style="height:100%;width:'+(prof/10)+'%;background:#aa88ff;border-radius:1px;"></div></div>';
     d.innerHTML='<div style="flex:1;"><div style="font-size:13px;color:#ddd;">'+sk.name+'</div><div style="font-size:10px;color:var(--text-dim);margin-top:2px;">'+sk.desc+' · '+unlocked+'/'+moves.length+'招 '+profBar+' '+prof+'/1000</div></div>';
     d.onclick=()=>{
-      const oldKey=s.skills[idx];
       closeDD('skill');
-      if(oldKey && oldKey!==sk.key){
-        const oldName=SKILL_OPTIONS.find(x=>x.key===oldKey)?.name||oldKey;
-        gConfirm('將<span style="color:#aa88ff;">【'+oldName+'】</span>替換為<span style="color:#aa88ff;">【'+sk.name+'】</span>?<br><span style="font-size:12px;color:#ff4466;text-shadow:0 0 8px #ff446688;">舊技能熟練度將歸零</span>', ok=>{
-          if(!ok) return;
-          const s2=initState();
-          if(s2.skillProf) s2.skillProf[oldKey]=0;
-          s2.skills[idx]=sk.key;
-          save(s2);
-          (cb||renderStatus)();
-        });
-      } else {
-        const s2=initState();
-        s2.skills[idx]=sk.key;
-        save(s2);
-        (cb||renderStatus)();
-      }
+      // 替換不歸零熟練度,直接換
+      const s2=initState();
+      s2.skills[idx]=sk.key;
+      save(s2);
+      (cb||renderStatus)();
     };
     list.appendChild(d);
   });

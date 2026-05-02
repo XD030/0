@@ -24,6 +24,8 @@
 /* ════════════════ 1. 等級 / EXP / HP 公式 ════════════════ */
 function expReq(lv){return lv*lv*5;}
 function maxHp(lv, vit){return 100+lv*10+vit*20;}
+// MP 上限公式 — 注意:state.js 的 mp migration 內聯了同樣公式,改公式時兩處要同步
+function maxMp(lv, int){return 20 + (int||1)*2;}
 function calcSlots(lv){return SLOT_UNLOCKS.filter(l=>lv>=l).length;}
 function nextSlot(lv){return SLOT_UNLOCKS.find(l=>l>lv)||null;}
 
@@ -245,6 +247,11 @@ function renderReserve(){
   document.getElementById('r-level').textContent=c.level;
   document.getElementById('r-hp-bar').style.width=Math.min(100,(c.hp/mhp)*100)+'%';
   document.getElementById('r-hp').textContent=`${c.hp}/${mhp}`;
+  const mmp=maxMp(c.level, c.INT);
+  const _rmpb=document.getElementById('r-mp-bar');
+  if(_rmpb) _rmpb.style.width=Math.min(100,((c.mp||0)/mmp)*100)+'%';
+  const _rmp=document.getElementById('r-mp');
+  if(_rmp) _rmp.textContent=(c.mp||0)+'/'+mmp;
   const needed=c.level<100?expReq(c.level):1;
   document.getElementById('r-exp-bar').style.width=(c.level>=100?100:Math.min(100,(c.exp/needed)*100))+'%';
   document.getElementById('r-exp').textContent=c.level>=100?'MAX':`${c.exp}/${needed}`;
@@ -382,6 +389,7 @@ function renderReserve(){
   });
   const _rnh=document.getElementById('r-next-hint');
   if(_rnh) _rnh.textContent=nextSlot(c.level)?`次一槽解鎖:LV ${nextSlot(c.level)}`:'// ALL SLOTS UNLOCKED';
+  if(typeof renderEssenceGrid==='function') renderEssenceGrid('r-');
 }
 
 /* ADV 面板用的 renderReserve(可指定前綴,目前只有 r- 在用,但保留多前綴介面) */
@@ -393,6 +401,9 @@ function renderReserveWithPrefix(p){
   g('level').textContent=c.level;
   g('hp-bar').style.width=Math.min(100,(c.hp/mhp)*100)+'%';
   g('hp').textContent=c.hp+'/'+mhp;
+  const mmp=maxMp(c.level, c.INT);
+  if(g('mp-bar')) g('mp-bar').style.width=Math.min(100,((c.mp||0)/mmp)*100)+'%';
+  if(g('mp')) g('mp').textContent=(c.mp||0)+'/'+mmp;
   const needed=c.level<100?expReq(c.level):1;
   g('exp-bar').style.width=(c.level>=100?100:Math.min(100,(c.exp/needed)*100))+'%';
   g('exp').textContent=c.level>=100?'MAX':c.exp+'/'+needed;
@@ -516,15 +527,18 @@ function renderReserveWithPrefix(p){
     sl.appendChild(div);
   });
   g('next-hint').textContent=nextSlot(c.level)?'次一槽解鎖:LV '+nextSlot(c.level):'// ALL SLOTS UNLOCKED';
+  if(typeof renderEssenceGrid==='function') renderEssenceGrid(p);
 }
 
-/* 裝備 / 技能 tab 切換(ADV 面板用,可帶前綴)*/
+/* 裝備 / 技能 / 精髓 tab 切換(ADV 面板用,可帶前綴)*/
 function switchGear2(tab, p){
   const prefix=p||'r-';
-  ['equip','skill'].forEach(t=>{
+  ['equip','skill','essence'].forEach(t=>{
     document.getElementById(prefix+'gear-tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById(prefix+'gear-panel-'+t)?.classList.toggle('active', t===tab);
   });
+  // 精髓 panel 不在 renderReserve 流程內,切到 essence 時主動 render
+  if(tab==='essence' && typeof renderEssenceGrid==='function') renderEssenceGrid(prefix);
 }
 
 
@@ -676,4 +690,52 @@ function drawSubRadar2WithPrefix(p, attr, vals){
     lbl.style.cssText='position:absolute;font-family:var(--font-mono);font-size:9px;color:'+color+';letter-spacing:1px;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;left:'+(x*scaleX)+'px;top:'+(y*scaleY)+'px;';
     wrap.appendChild(lbl);
   });
+}
+
+
+/* ════════════════ 9. 精髓 grid 渲染(Phase 1:UI 框架)════════════════
+ * 純槽位 UI、單頁顯示 20 格(5 col × 4 row)、tier 顏色預覽
+ * 點空格 toast「// 精髓系統開發中」,點鎖格 toast 等級提示
+ */
+function renderEssenceGrid(prefix){
+  const grid = document.getElementById(prefix+'essence-grid');
+  if(!grid) return;
+  const s = initState();
+  const lv = s.character.level;
+  const unlocked = essenceUnlocked(lv);
+  let h = '';
+  for(let i=0; i<ESSENCE_MAX; i++){
+    const ess = (s.essences||[])[i];
+    if(i >= unlocked){
+      const reqLv = i * ESSENCE_UNLOCK_STEP;
+      h += `<div class="essence-cell locked" data-idx="${i}" onclick="essenceCellClick(${i},'locked')">`+
+        `<div class="essence-cell-lock-lv">LV ${reqLv}</div>`+
+      `</div>`;
+    } else if(!ess){
+      h += `<div class="essence-cell empty" data-idx="${i}" onclick="essenceCellClick(${i},'empty')"></div>`;
+    } else {
+      const tier = Math.max(1, Math.min(9, ess.tier|0));
+      h += `<div class="essence-cell filled tier-${tier}" data-idx="${i}" onclick="essenceCellClick(${i},'filled')">`+
+        `<div class="essence-cell-tier">T${tier}</div>`+
+        `<div class="essence-cell-name">${ess.name||''}</div>`+
+      `</div>`;
+    }
+  }
+  grid.innerHTML = h;
+  const hint = document.getElementById(prefix+'essence-hint');
+  if(hint){
+    const nxt = nextEssenceLv(lv);
+    hint.textContent = nxt
+      ? `次一格解鎖:LV ${nxt}(已開 ${unlocked}/${ESSENCE_MAX})`
+      : `// ALL ESSENCE SLOTS UNLOCKED (${unlocked}/${ESSENCE_MAX})`;
+  }
+}
+
+function essenceCellClick(idx, kind){
+  if(kind==='locked'){
+    const reqLv = idx * ESSENCE_UNLOCK_STEP;
+    showToast(`// LV ${reqLv} 解鎖此格`);
+  } else {
+    showToast('// 精髓系統開發中');
+  }
 }

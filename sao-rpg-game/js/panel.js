@@ -65,6 +65,7 @@ function renderBattlePanel(){
         </div>
         <div class="bars-s">
           <div><div class="bar-row"><span class="bar-label">HP</span><span style="font-family:var(--font-mono);font-size:10px;color:#ff6655" id="ap-hp">—</span></div><div class="bar-track"><div class="hp-bar" id="ap-hp-bar" style="width:100%"></div></div></div>
+          <div><div class="bar-row"><span class="bar-label">MP</span><span style="font-family:var(--font-mono);font-size:10px;color:#00ffaa" id="ap-mp">—</span></div><div class="bar-track"><div class="hp-bar bp-mp-bar" id="ap-mp-bar" style="width:100%"></div></div></div>
           <div><div class="bar-row"><span class="bar-label">EXP</span><span style="font-family:var(--font-mono);font-size:10px;color:#00ffcc" id="ap-exp">—</span></div><div class="bar-track"><div class="exp-bar" id="ap-exp-bar" style="width:0%"></div></div></div>
         </div>
         <div class="pts-banner" id="ap-pts-banner"><span class="pts-big" id="ap-pts-num">0</span><span>屬性點待分配</span></div>
@@ -78,6 +79,7 @@ function renderBattlePanel(){
         <div class="gear-tabs">
           <div class="gear-tab equip-tab active" id="ap-gear-tab-equip" onclick="switchGear2('equip','ap-')">EQUIPMENT</div>
           <div class="gear-tab skill-tab" id="ap-gear-tab-skill" onclick="switchGear2('skill','ap-')">SKILL SLOTS</div>
+          <div class="gear-tab essence-tab" id="ap-gear-tab-essence" onclick="switchGear2('essence','ap-')">ESSENCE</div>
         </div>
         <div class="gear-panel active" id="ap-gear-panel-equip">
           <div class="equip-grid-v">
@@ -88,6 +90,10 @@ function renderBattlePanel(){
         <div class="gear-panel" id="ap-gear-panel-skill">
           <div class="slots-list" id="ap-slots-list"></div>
           <div class="next-hint" id="ap-next-hint"></div>
+        </div>
+        <div class="gear-panel" id="ap-gear-panel-essence">
+          <div class="essence-grid" id="ap-essence-grid"></div>
+          <div class="next-hint" id="ap-essence-hint"></div>
         </div>
       </div>
     </div>`;

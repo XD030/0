@@ -25,8 +25,7 @@
 .gear-tab.equip-tab.active{color:var(--orange);}
 .gear-tab.skill-tab{color:rgba(119,85,255,.45);}
 .gear-tab.skill-tab.active{color:#aa88ff;}
-/* 斜線分隔 */
-.gear-tabs::after{content:'';position:absolute;left:50%;top:10%;bottom:10%;width:1.5px;background:linear-gradient(to bottom right,transparent 30%,rgba(255,255,255,.18) 50%,transparent 70%);transform:skewX(-15deg);}
+/* 斜線分隔(3-tab 後 50% 落在中間 tab 上,刪除) */
 /* 底部指示線 */
 .gear-tab::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:1.5px;transition:opacity .2s,box-shadow .2s;}
 .gear-tab.equip-tab::after{background:var(--orange);box-shadow:0 0 8px var(--orange);opacity:0;}
@@ -73,6 +72,39 @@
 .slot-strip.locked .slot-status{color:#5a7a96;}
 .slot-strip.has-skill .slot-status{color:#dd99ff;}
 .next-hint{font-family:var(--font-mono);font-size:11px;color:var(--text-sub);text-align:center;margin-top:var(--s3);}
+/* ── 精髓 tab ── */
+.gear-tab.essence-tab{color:rgba(255,204,68,.45);}
+.gear-tab.essence-tab.active{color:#ffcc44;}
+.gear-tab.essence-tab::after{background:#ffcc44;box-shadow:0 0 8px #ffcc44;opacity:0;}
+.gear-tab.essence-tab.active::after{opacity:1;}
+/* ── 精髓 grid(5×2) ── */
+.essence-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:var(--s3);}
+.essence-cell{aspect-ratio:1/1;border:1px solid rgba(255,204,68,.18);background:rgba(3,8,15,.7);position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .15s,box-shadow .15s;overflow:hidden;}
+.essence-cell.locked{border-color:rgba(255,255,255,.05);opacity:.55;cursor:default;background:rgba(0,0,0,.4);}
+.essence-cell-lock-lv{font-family:var(--font-mono);font-size:15px;font-weight:600;color:rgba(180,200,220,.7);letter-spacing:1.5px;text-shadow:0 0 4px rgba(0,0,0,.6);}
+.essence-cell.empty::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,204,68,.08) 50%,transparent 60%);animation:essScan 4s ease-in-out infinite;}
+@keyframes essScan{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
+.essence-cell-name{font-family:var(--font-mono);font-size:9px;letter-spacing:.5px;text-align:center;padding:0 2px;line-height:1.2;}
+.essence-cell-tier{position:absolute;top:2px;right:3px;font-family:var(--font-mono);font-size:8px;opacity:.85;letter-spacing:0;}
+/* tier 配色 */
+.essence-cell.tier-1{border-color:#ffd700;background:radial-gradient(circle,rgba(255,215,0,.18),rgba(3,8,15,.85));box-shadow:inset 0 0 12px rgba(255,215,0,.25),0 0 8px rgba(255,215,0,.3);}
+.essence-cell.tier-1 .essence-cell-name,.essence-cell.tier-1 .essence-cell-tier{color:#ffd700;text-shadow:0 0 6px #ffd70088;}
+.essence-cell.tier-2{border-color:#ff4466;background:radial-gradient(circle,rgba(255,68,102,.12),rgba(3,8,15,.85));box-shadow:inset 0 0 8px rgba(255,68,102,.2);}
+.essence-cell.tier-2 .essence-cell-name,.essence-cell.tier-2 .essence-cell-tier{color:#ff4466;}
+.essence-cell.tier-3{border-color:#cc88ff;background:radial-gradient(circle,rgba(204,136,255,.1),rgba(3,8,15,.85));box-shadow:inset 0 0 8px rgba(204,136,255,.18);}
+.essence-cell.tier-3 .essence-cell-name,.essence-cell.tier-3 .essence-cell-tier{color:#cc88ff;}
+.essence-cell.tier-4{border-color:#00c8ff;box-shadow:inset 0 0 6px rgba(0,200,255,.15);}
+.essence-cell.tier-4 .essence-cell-name,.essence-cell.tier-4 .essence-cell-tier{color:#00c8ff;}
+.essence-cell.tier-5{border-color:#00ddcc;}
+.essence-cell.tier-5 .essence-cell-name,.essence-cell.tier-5 .essence-cell-tier{color:#00ddcc;}
+.essence-cell.tier-6{border-color:#66dd66;}
+.essence-cell.tier-6 .essence-cell-name,.essence-cell.tier-6 .essence-cell-tier{color:#66dd66;}
+.essence-cell.tier-7{border-color:#ffcc44;}
+.essence-cell.tier-7 .essence-cell-name,.essence-cell.tier-7 .essence-cell-tier{color:#ffcc44;}
+.essence-cell.tier-8{border-color:#aaaaaa;}
+.essence-cell.tier-8 .essence-cell-name,.essence-cell.tier-8 .essence-cell-tier{color:#cccccc;}
+.essence-cell.tier-9{border-color:#555555;opacity:.85;}
+.essence-cell.tier-9 .essence-cell-name,.essence-cell.tier-9 .essence-cell-tier{color:#888888;}
 .streak-card{border:1px solid rgba(0,255,204,.18);background:rgba(0,255,204,.04);padding:var(--s4);margin-bottom:var(--s3);display:flex;align-items:center;gap:var(--s3);}
 .streak-num{font-family:var(--font-mono);font-size:36px;color:var(--cyan);line-height:1;text-shadow:0 0 12px rgba(0,255,204,.4);flex-shrink:0;}
 .streak-title{font-family:var(--font-mono);font-size:11px;color:var(--cyan);letter-spacing:2px;}
@@ -516,6 +548,18 @@
 @keyframes escan{0%,100%{left:-40px}50%{left:100%}}
 @keyframes sscan{0%,100%{left:-60px}50%{left:100%}}
 /* ── 生活技能弧形選單 ── */
+/* ── MP 條(Phase α 能量制)── */
+.bp-mp-bar{background:linear-gradient(90deg,#00b8a8,#00ffaa)!important;box-shadow:0 0 6px rgba(0,255,170,.4);}
+.bp-mp-num{font-family:var(--font-mono);font-size:10px;margin-top:3px;display:flex;align-items:baseline;gap:2px;}
+.bp-mp-cur{color:#00ffaa;text-shadow:0 0 4px rgba(0,255,170,.4);}
+.bp-mp-max{color:rgba(0,255,170,.5);}
+.bp-mp-max::before{content:'/';margin:0 1px;}
+/* ── 卡片 cost / recover 標籤(Phase α)── */
+.battle-card{position:relative;}
+.card-cost-badge{position:absolute;top:3px;right:4px;font-family:var(--font-mono);font-size:11px;color:#00ffaa;background:rgba(0,30,25,.85);border:1px solid rgba(0,255,170,.4);padding:1px 5px;border-radius:2px;line-height:1.2;font-weight:600;text-shadow:0 0 4px rgba(0,255,170,.5);z-index:2;}
+.card-rec-badge{position:absolute;bottom:3px;right:4px;font-family:var(--font-mono);font-size:9px;color:#00ffaa;background:rgba(0,30,25,.65);padding:0 3px;border-radius:2px;line-height:1.3;opacity:.8;z-index:2;}
+.battle-card.no-mp{filter:grayscale(.7);}
+.battle-card.no-mp .card-cost-badge{color:#ff4466;border-color:rgba(255,68,102,.5);background:rgba(40,0,10,.8);}
 </style>
 </head>
 <body>
@@ -616,6 +660,8 @@
         <div class="bp-left">
           <div class="bp-hp-num" id="map-hp-num"><span class="bp-hp-cur" id="map-hp-cur">—</span><span class="bp-hp-max" id="map-hp-max"></span></div>
           <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="map-hp-bar" style="width:100%;background:linear-gradient(90deg,#cc2233,#ff4455);"></div></div>
+          <div class="bp-mp-num" id="map-mp-num"><span class="bp-mp-cur" id="map-mp-cur">—</span><span class="bp-mp-max" id="map-mp-max"></span></div>
+          <div class="bp-hp-bar-wrap"><div class="bp-hp-bar bp-mp-bar" id="map-mp-bar" style="width:100%;"></div></div>
           <div class="bp-status-slots">
             <div class="status-slot-wrap"><div class="status-slot empty" id="map-buff-slot">▲</div></div>
             <div class="status-slot-wrap"><div class="status-slot empty" id="map-debuff-slot">▼</div></div>
@@ -657,6 +703,8 @@
       <div class="bp-left">
         <div class="bp-hp-num" id="bp-p-hp"><span class="bp-hp-cur" id="bp-p-cur">—</span><span class="bp-hp-max" id="bp-p-max"></span></div>
         <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="bp-p-bar" style="width:100%;background:linear-gradient(90deg,#cc2233,#ff4455);"></div></div>
+        <div class="bp-mp-num" id="bp-p-mp"><span class="bp-mp-cur" id="bp-p-mp-cur">—</span><span class="bp-mp-max" id="bp-p-mp-max"></span></div>
+        <div class="bp-hp-bar-wrap"><div class="bp-hp-bar bp-mp-bar" id="bp-p-mp-bar" style="width:100%;"></div></div>
         <div class="bp-stagger-wrap"><div class="bp-stagger-bar" id="bp-p-stagger" style="width:0%;"></div></div>
         <div class="bp-status-slots">
           <div class="status-slot-wrap"><div class="status-slot empty" id="p-buff-slot">▲</div></div>
@@ -775,6 +823,7 @@
       </div>
       <div class="bars-s">
         <div><div class="bar-row"><span class="bar-label">HP</span><span style="font-family:var(--font-mono);font-size:10px;color:#ff6655" id="r-hp">200/200</span></div><div class="bar-track"><div class="hp-bar" id="r-hp-bar" style="width:100%"></div></div></div>
+        <div><div class="bar-row"><span class="bar-label">MP</span><span style="font-family:var(--font-mono);font-size:10px;color:#00ffaa" id="r-mp">—</span></div><div class="bar-track"><div class="hp-bar bp-mp-bar" id="r-mp-bar" style="width:100%"></div></div></div>
         <div><div class="bar-row"><span class="bar-label">EXP</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--cyan)" id="r-exp">0/5</span></div><div class="bar-track"><div class="exp-bar" id="r-exp-bar" style="width:0%"></div></div></div>
       </div>
       <div class="pts-banner" id="r-pts-banner"><span class="pts-big" id="r-pts-num">0</span><span>點可分配</span></div>
@@ -788,6 +837,7 @@
       <div class="gear-tabs">
         <div class="gear-tab equip-tab active" id="r-gear-tab-equip" onclick="switchGear2('equip')">EQUIPMENT</div>
         <div class="gear-tab skill-tab" id="r-gear-tab-skill" onclick="switchGear2('skill')">SKILL SLOTS</div>
+        <div class="gear-tab essence-tab" id="r-gear-tab-essence" onclick="switchGear2('essence')">ESSENCE</div>
       </div>
       <div class="gear-panel active" id="r-gear-panel-equip">
         <div class="equip-grid-v">
@@ -798,6 +848,10 @@
       <div class="gear-panel" id="r-gear-panel-skill">
         <div class="slots-list" id="r-slots-list"></div>
         <div class="next-hint" id="r-next-hint"></div>
+      </div>
+      <div class="gear-panel" id="r-gear-panel-essence">
+        <div class="essence-grid" id="r-essence-grid"></div>
+        <div class="next-hint" id="r-essence-hint"></div>
       </div>
     </div>
   </div>

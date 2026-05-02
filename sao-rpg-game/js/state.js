@@ -105,6 +105,25 @@ const EQUIP_OPTIONS={
   ]
 };
 
+/* ── 精髓系統(Phase 1:UI 框架)──
+ * 20 格純槽位,每 5 級開 1 格(lv5→1, lv100→20)
+ * 每格 null 或 essence 物件 { id, name, tier:1-9 } (1 最高 9 最低)
+ * 暫僅 UI,不開放填入
+ */
+const ESSENCE_MAX = 20;
+const ESSENCE_PER_PAGE = 20;  // 改單頁顯示後等於 ESSENCE_MAX,常數名暫保留
+const ESSENCE_UNLOCK_STEP = 5;
+function essenceUnlocked(level){
+  // lv 1 起預設 1 格,之後每 5 級 +1 格(lv 5→2, lv 95→20, lv 100 cap 在 20)
+  return Math.min(ESSENCE_MAX, 1 + Math.max(0, Math.floor((level||0)/ESSENCE_UNLOCK_STEP)));
+}
+function nextEssenceLv(level){
+  // cur=1(lv 1-4) → 下個 lv 5; cur=2(lv 5-9) → 下個 lv 10 ... cur=20 → 全開回 null
+  const cur = essenceUnlocked(level);
+  if(cur >= ESSENCE_MAX) return null;
+  return cur * ESSENCE_UNLOCK_STEP;
+}
+
 /* ── 技能定義 ──
  * move: { id, name, type:'atk'|'def'|'spc', hits, mul, desc, profReq }
  * mul: STR 倍率(atk)或 回復倍率(def)
@@ -114,49 +133,49 @@ const SKILL_DEFS={
   unarmed:{
     name:'體術', desc:'徒手戰鬥',
     moves:[
-      {id:'unarmed_strike', name:'普通攻擊', type:'atk', hits:1, mul:0.8,  profBonus:0.4, profReq:0,   desc:'基礎攻擊,STR×0.8'},
-      {id:'unarmed_combo',  name:'連擊',     type:'atk', hits:2, mul:0.5,  profBonus:0.3, profReq:400, desc:'2連擊,各STR×0.5'},
-      {id:'unarmed_burst',  name:'爆發拳',   type:'atk', hits:1, mul:2.0,  profBonus:0.5, profReq:800, desc:'STR×2.0,自身-10HP', selfDmg:10},
+      {id:'unarmed_strike', name:'普通攻擊', type:'atk', hits:1, mul:0.8,  profBonus:0.4, profReq:0,   cost:0, recover:3, desc:'基礎攻擊,STR×0.8(回 3 MP)'},
+      {id:'unarmed_combo',  name:'連擊',     type:'atk', hits:2, mul:0.5,  profBonus:0.3, profReq:400, cost:2, desc:'2連擊,各STR×0.5'},
+      {id:'unarmed_burst',  name:'爆發拳',   type:'atk', hits:1, mul:2.0,  profBonus:0.5, profReq:800, cost:6, desc:'STR×2.0,自身-10HP', selfDmg:10},
     ],
   },
   sword1:{
     name:'單手劍', desc:'單手劍技',
     moves:[
-      {id:'sword1_slash',   name:'基礎斬擊',   type:'atk', hits:1, mul:1.0,  profBonus:0.5, profReq:0,   desc:'基礎劍技,STR×1.0'},
-      {id:'sword1_spiral',  name:'螺旋斬',     type:'atk', hits:1, mul:1.5,  profBonus:0.5, profReq:300, desc:'STR×1.5,破防效果', debuff:'PRT_break'},
-      {id:'sword1_horizon', name:'水平方陣斬', type:'atk', hits:4, mul:0.6,  profBonus:0.4, profReq:700, desc:'4連擊,各STR×0.6'},
-      {id:'sword1_aura',    name:'劍氣',       type:'atk', hits:1, mul:2.5,  profBonus:0.5, profReq:900, desc:'劍氣衝擊,STR×2.5'},
+      {id:'sword1_slash',   name:'基礎斬擊',   type:'atk', hits:1, mul:1.0,  profBonus:0.5, profReq:0,   cost:0, recover:3, desc:'基礎劍技,STR×1.0(回 3 MP)'},
+      {id:'sword1_spiral',  name:'螺旋斬',     type:'atk', hits:1, mul:1.5,  profBonus:0.5, profReq:300, cost:4, desc:'STR×1.5,破防效果', debuff:'PRT_break'},
+      {id:'sword1_horizon', name:'水平方陣斬', type:'atk', hits:4, mul:0.6,  profBonus:0.4, profReq:700, cost:6, desc:'4連擊,各STR×0.6'},
+      {id:'sword1_aura',    name:'劍氣',       type:'atk', hits:1, mul:2.5,  profBonus:0.5, profReq:900, cost:10,desc:'劍氣衝擊,STR×2.5'},
     ],
   },
   parry:{
     name:'格擋', desc:'防禦反擊',
     moves:[
-      {id:'parry_basic',   name:'格擋',       type:'def', mul:0.4,  profBonus:0.2, profReq:0,   desc:'減傷40%,持續1回合'},
-      {id:'parry_counter', name:'反擊格擋',   type:'def', mul:0.4,  profBonus:0.2, profReq:400, desc:'減傷+反擊STR×0.8', counterMul:0.8},
-      {id:'parry_perfect', name:'完美格擋',   type:'def', mul:1.0,  profBonus:0,   profReq:800, desc:'完全無傷+敵方眩暈1回合', stun:true},
+      {id:'parry_basic',   name:'格擋',       type:'def', mul:0.4,  profBonus:0.2, profReq:0,   cost:0, recover:2, desc:'減傷40%,持續1回合(回 2 MP)'},
+      {id:'parry_counter', name:'反擊格擋',   type:'def', mul:0.4,  profBonus:0.2, profReq:400, cost:2, desc:'減傷+反擊STR×0.8', counterMul:0.8},
+      {id:'parry_perfect', name:'完美格擋',   type:'def', mul:1.0,  profBonus:0,   profReq:800, cost:6, desc:'完全無傷+敵方眩暈1回合', stun:true},
     ],
   },
   heal:{
     name:'治癒術', desc:'戰鬥中回復',
     moves:[
-      {id:'heal_basic',  name:'治癒',   type:'def', healMul:0.25, profBonus:0.15, profReq:0,   desc:'回復最大HP的25%'},
-      {id:'heal_regen',  name:'再生',   type:'def', regenTurns:3, profBonus:0,    profReq:400, desc:'持續3回合緩慢回血'},
-      {id:'heal_burst',  name:'爆發治癒',type:'def', healMul:0.5,  profBonus:0.2, profReq:800, desc:'回復最大HP的50%'},
+      {id:'heal_basic',  name:'治癒',   type:'def', healMul:0.25, profBonus:0.15, profReq:0,   cost:2, desc:'回復最大HP的25%'},
+      {id:'heal_regen',  name:'再生',   type:'def', regenTurns:3, profBonus:0,    profReq:400, cost:4, desc:'持續3回合緩慢回血'},
+      {id:'heal_burst',  name:'爆發治癒',type:'def', healMul:0.5,  profBonus:0.2, profReq:800, cost:6, desc:'回復最大HP的50%'},
     ],
   },
   poison:{
     name:'毒術', desc:'毒素攻擊',
     moves:[
-      {id:'poison_mist',  name:'毒霧',   type:'spc', poisonTurns:4, profBonus:0, profReq:0,   desc:'敵人中毒4回合'},
-      {id:'poison_burst', name:'毒爆',   type:'atk', hits:1, mul:0.8, poisonTurns:3, profBonus:0.4, profReq:500, desc:'攻擊+中毒3回合'},
-      {id:'poison_cloud', name:'劇毒雲', type:'spc', poisonTurns:6, profBonus:0, profReq:900, desc:'敵人劇毒6回合'},
+      {id:'poison_mist',  name:'毒霧',   type:'spc', poisonTurns:4, profBonus:0, profReq:0,   cost:2, desc:'敵人中毒4回合'},
+      {id:'poison_burst', name:'毒爆',   type:'atk', hits:1, mul:0.8, poisonTurns:3, profBonus:0.4, profReq:500, cost:4, desc:'攻擊+中毒3回合'},
+      {id:'poison_cloud', name:'劇毒雲', type:'spc', poisonTurns:6, profBonus:0, profReq:900, cost:6, desc:'敵人劇毒6回合'},
     ],
   },
   charge:{
     name:'蓄力', desc:'強化下次攻擊',
     moves:[
-      {id:'charge_basic', name:'蓄力',   type:'spc', chargeMul:2.5, profBonus:0.5, profReq:0,   desc:'下回合傷害×2.5'},
-      {id:'charge_full',  name:'全力蓄力',type:'spc', chargeMul:4.0, profBonus:0,   profReq:600, desc:'下回合傷害×4.0,需跳過此回合'},
+      {id:'charge_basic', name:'蓄力',   type:'spc', chargeMul:2.5, profBonus:0.5, profReq:0,   cost:2, desc:'下回合傷害×2.5'},
+      {id:'charge_full',  name:'全力蓄力',type:'spc', chargeMul:4.0, profBonus:0,   profReq:600, cost:4, desc:'下回合傷害×4.0,需跳過此回合'},
     ],
   },
 };
@@ -198,7 +217,7 @@ function initState(){
   if(!s.ver||s.ver<DATA_VER){
     s={ver:DATA_VER};
   }
-  if(!s.character)s.character={name:'無名俠客',level:1,exp:0,hp:200,STR:1,VIT:1,DEX:1,AGI:1,INT:1,LUK:1,pendingPoints:0,skillSlots:2};
+  if(!s.character)s.character={name:'無名俠客',level:1,exp:0,hp:200,mp:22,STR:1,VIT:1,DEX:1,AGI:1,INT:1,LUK:1,pendingPoints:0,skillSlots:2};
   // 生活技能等級系統(獨立於戰鬥屬性)
   if(!s.lifeSkills)s.lifeSkills={};
   LIFE_ATTRS.forEach(a=>{
@@ -226,6 +245,11 @@ function initState(){
   if(!s.skills)s.skills={};
   if(!s.skillProf)s.skillProf={};
   if(!s.unlockedMoves)s.unlockedMoves={};
+  // 精髓系統(Phase 1):20 格陣列,長度不對時重建(保留有效格資料)
+  if(!Array.isArray(s.essences) || s.essences.length !== ESSENCE_MAX){
+    const _oldEss = Array.isArray(s.essences) ? s.essences : [];
+    s.essences = Array(ESSENCE_MAX).fill(null).map((_, i)=> _oldEss[i] || null);
+  }
   const _nameToKey={'One-Hand Sword':'sword1','Parry':'parry','Sprint':'charge','Battle Heal':'heal','Searching':'poison'};
   Object.keys(s.skills).forEach(i=>{const v=s.skills[i];if(v&&!SKILL_DEFS[v]&&_nameToKey[v])s.skills[i]=_nameToKey[v];});
   if(!s.bag){
@@ -366,6 +390,18 @@ function runStateMigrations(){
     }
     // 5. 旗標標記
     s.itemSchemaV=1;
+  }
+
+  // ── 精髓系統(Phase 1):確保 20 格陣列存在,長度不對時重建(保留有效格資料)──
+  if(!Array.isArray(s.essences) || s.essences.length !== ESSENCE_MAX){
+    const old = Array.isArray(s.essences) ? s.essences : [];
+    s.essences = Array(ESSENCE_MAX).fill(null).map((_, i)=> old[i] || null);
+  }
+
+  // ── MP 欄位 migration:舊存檔補上,以當前 INT 算 maxMp 並設為滿(舊角色補裝)──
+  // 公式內聯避免依賴 character.js 的 maxMp(載入順序 state.js 先);改公式記得兩處同步
+  if(s.character && (typeof s.character.mp !== 'number' || s.character.mp < 0)){
+    s.character.mp = 20 + (s.character.INT||1)*2;
   }
 
   // ── Task A:確保製造佇列 / 待命名區欄位存在(不 bump DATA_VER)──
