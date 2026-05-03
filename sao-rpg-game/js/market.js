@@ -429,17 +429,17 @@ function renderSellFromBag(){
     const qty=marketSellSelected.get(selKey)||0;
     const isSel=qty>0;
     const canQty=!hasGear;
-    const qtyCtrl=marketSellMulti&&isSel&&canQty?`<div class="mkt-qty-ctrl" style="display:flex;align-items:center;gap:4px;flex-shrink:0;" onclick="event.stopPropagation()">
+    const qtyCtrl=marketSellMulti&&isSel&&canQty?`<div class="mkt-qty-ctrl" style="display:flex;align-items:center;gap:0;flex-shrink:0;" onclick="event.stopPropagation()">
       <div ontouchstart="startMktSellQty('${selKey}',${item.qty},-1,event)" ontouchend="stopMktSellQty()" ontouchcancel="stopMktSellQty()"
            onmousedown="startMktSellQty('${selKey}',${item.qty},-1,event)" onmouseup="stopMktSellQty()" onmouseleave="stopMktSellQty()"
            onclick="event.stopPropagation()"
-        style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(68,221,136,.3);background:transparent;color:#44dd88;font-size:16px;cursor:pointer;user-select:none;line-height:1;">−</div>
+        style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.15);border-radius:3px 0 0 3px;color:#fff;font-size:16px;cursor:pointer;user-select:none;">−</div>
       <input type="number" class="mkt-qty-input" min="1" max="${item.qty}" value="${qty}" oninput="mktSellQtyInput('${selKey}',${item.qty},this.value)" onclick="event.stopPropagation()"
-        style="width:40px;height:28px;text-align:center;background:rgba(0,0,0,.4);border:1px solid rgba(68,221,136,.25);color:#44dd88;font-family:var(--font-mono);font-size:13px;outline:none;">
+        style="width:36px;height:26px;text-align:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-left:none;border-right:none;color:#fff;font-family:var(--font-mono);font-size:12px;outline:none;">
       <div ontouchstart="startMktSellQty('${selKey}',${item.qty},1,event)" ontouchend="stopMktSellQty()" ontouchcancel="stopMktSellQty()"
            onmousedown="startMktSellQty('${selKey}',${item.qty},1,event)" onmouseup="stopMktSellQty()" onmouseleave="stopMktSellQty()"
            onclick="event.stopPropagation()"
-        style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(68,221,136,.3);background:transparent;color:#44dd88;font-size:16px;cursor:pointer;user-select:none;line-height:1;">＋</div>
+        style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.15);border-radius:0 3px 3px 0;color:#fff;font-size:16px;cursor:pointer;user-select:none;">＋</div>
     </div>`:'';
     if(!hasGear){
       // 非裝備類(material/item)→ 對齊 CRFT picker 樣式:無 ✓ checkmark、無 emoji icon、持有/N 直立堆疊
