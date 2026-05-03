@@ -436,6 +436,7 @@
 .map-scene-ground{position:absolute;bottom:0;left:0;right:0;height:28%;background:linear-gradient(180deg,transparent,rgba(0,10,30,.95));border-top:1px solid rgba(0,200,255,.06);}
 .map-player-zone{position:absolute;bottom:28%;left:10%;display:flex;flex-direction:column;align-items:center;}
 .map-player-ph{width:80px;height:80px;border:1px dashed rgba(0,200,255,.25);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:rgba(0,200,255,.3);}
+.map-player-img{width:80px;height:80px;object-fit:contain;display:block;}
 .map-emblem-zone{position:absolute;bottom:30%;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;}
 .map-emblem-ph{width:72px;height:72px;border:1px solid rgba(0,200,255,.12);background:rgba(0,200,255,.04);display:flex;align-items:center;justify-content:center;}
 .map-floor-num{font-family:var(--font-mono);font-size:11px;color:rgba(0,200,255,.4);letter-spacing:2px;}
@@ -649,7 +650,7 @@
       <div class="map-scene-bg"></div>
       <div class="map-scene-floor"></div>
       <div class="map-scene-ground"></div>
-      <div class="map-player-zone"><div class="map-player-ph">PLAYER</div></div>
+      <div class="map-player-zone"><img class="map-player-img" src="img/player_idle.png" alt="PLAYER" onerror="this.outerHTML='&lt;div class=\'map-player-ph\'&gt;PLAYER&lt;/div&gt;'"></div>
       <div class="map-emblem-zone">
         <div class="map-emblem-ph"></div>
         <div class="map-floor-num" id="map-floor-label">FLOOR 1</div>
@@ -690,7 +691,7 @@
     <div class="adv-scene" onclick="if(selectedCard){selectedCard=null;hideConfirm();renderCards();}">
       <div class="scene-floor"></div>
       <div class="scene-ground"></div>
-      <div class="player-zone" id="player-zone"><div class="player-sprite-placeholder">PLAYER</div></div>
+      <div class="player-zone" id="player-zone"><img class="player-sprite" src="img/player_idle.png" alt="PLAYER" onerror="this.outerHTML='&lt;div class=\'player-sprite-placeholder\'&gt;PLAYER&lt;/div&gt;'"></div>
       <div class="enemy-zone" id="enemy-zone"><div class="enemy-frame"><div class="enemy-sprite-placeholder">ENEMY</div></div></div>
       <div class="scene-vs">VS</div>
       <div class="battle-result" id="battle-result">
