@@ -839,6 +839,9 @@ function endBattle(result){
     document.getElementById('adv-battle-map').style.display='none';
     showToast('// 你被擊倒了！復活中...');
     setTimeout(()=>{
+      // 退出樓層地圖層 + 還原底部 tab(對齊 exitFloorMap 的清理)
+      document.getElementById('page-map-battle').style.display='none';
+      document.getElementById('adv-tab-bar').style.display='flex';
       goPage('adventure');
       goAdvPage('map');
       renderFloorSelect();
