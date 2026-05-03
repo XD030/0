@@ -125,6 +125,12 @@ These are bugs we already fixed. Don't re-create them.
    - **Phase D 改名的 key**:`dark_crystal2` → `shadow_crystal`(舊存檔由 migration 自動轉)。
    - **CRFT 武器 / 裝備清單樣式**:`.crft-type-row` / `.crft-type-btn` / `.crft-type-btn::before` / `.crft-type-btn.active` / `.crft-type-icon` / `.crft-type-name` / `.crft-armor-grid` —— 武器與裝備 tab 進場已改成 `<select>` dropdown(`crft-picker-row` / `crft-picker-select` / `crft-empty-hint`),選擇值持久化到 `s.crftLastPick.{weapon,armor}`。藥水 tab 沒有類型清單(base/effect/modifier 三段式),不受影響。
 
+10. **`if(!s.character.gold)` treats legitimate `0` as "field missing"** — use `== null` instead, otherwise a player who spent all their gold and reloads gets auto-refilled to 500g (infinite gold bug). Same applies to other numeric fields that can legitimately be 0 (exp, mp, hp).
+
+11. **Commit message ≠ actual code state** — `9a23904 feat: 市集 UX 改成點+1/長按toggle/右鍵清除` claimed "click=+1, long-press=toggle, right-click=clear", but actual code kept stepper UI; "+1" was supplied by stepper, row click was toggle. Before cleaning up a UI element, grep to confirm what interaction it actually carries — don't assume from commit message.
+
+12. **Spec function name vs main repo can be out of sync** — when given a spec like "delete function X", first grep main repo to verify X exists and content matches spec expectations. If X doesn't exist or content differs significantly, stop and report. Don't substitute "similarly-named" alternatives.
+
 ## Conventions
 
 - **Strings in zh-TW**, comments mix zh-TW and English, code identifiers in English. Toasts start with `'// '` prefix (e.g. `showToast('// 裝備 ' + name)`).
@@ -182,3 +188,7 @@ If you spot remaining cruft (orphan IIFEs, duplicate selectors, unreferenced HTM
 - Don't reorder `<script>` tags without checking the dep graph.
 - Don't use `position: fixed` for in-battle UI without checking it stays inside `.phone`.
 - Don't `console.log` debug output that ships to users — strip it before declaring done.
+- Don't use `git worktree`. All edits must happen in the main repo working directory. The worktree mechanism caused a multi-hour session of confused state where edits to sandbox copies didn't reach the main repo, while reports claimed they did.
+- Don't use `cp` / file copy from sandbox to main repo. Use `view` + `str_replace` / `create_file` directly on the main repo's absolute path.
+- After every edit, verify with `git diff <path>` and report the diff to the user. Do not rely on tool return messages — they don't prove the file was actually written.
+- Before claiming "X function deleted", grep main repo to confirm X exists with content matching the spec. If X doesn't exist, or content differs from spec, stop and report. Don't guess at "similar named" alternatives.
