@@ -118,12 +118,12 @@
 .battle-tab:last-child{border-bottom:none;}
 .battle-tab.active{color:var(--blue);background:rgba(0,200,255,.08);}
 .battle-tab-content{flex:1;min-height:0;overflow:hidden;}
-.player-zone{position:absolute;bottom:35%;left:8%;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.player-zone{position:absolute;bottom:8%;left:8%;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .player-sprite-placeholder{width:80px;height:80px;border:1px dashed rgba(0,200,255,.3);background:rgba(0,200,255,.05);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:rgba(0,200,255,.4);letter-spacing:1px;}
-.enemy-zone{position:absolute;bottom:35%;right:8%;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.enemy-zone{position:absolute;bottom:8%;right:8%;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .enemy-frame{width:80px;height:80px;border:1px solid rgba(180,100,255,.2);background:rgba(10,0,20,.6);display:flex;align-items:center;justify-content:center;position:relative;}
 .enemy-sprite-placeholder{width:72px;height:72px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:rgba(180,100,255,.4);}
-.player-sprite{width:80px;height:80px;object-fit:contain;display:block;}
+.player-sprite{width:auto;height:280px;object-fit:contain;display:block;}
 .enemy-intent{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-family:var(--font-mono);font-size:8px;white-space:nowrap;background:rgba(0,0,0,.85);padding:2px 6px;border:1px solid rgba(255,100,60,.45);color:rgba(255,160,100,.95);}
 .enemy-hp-wrap{width:88px;}
 .enemy-name{font-family:var(--font-mono);font-size:9px;color:rgba(200,150,255,.7);text-align:center;letter-spacing:1px;}
