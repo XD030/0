@@ -236,7 +236,6 @@ function renderMarket(){
         onmouseup="endMarketHold()" onmouseleave="endMarketHold()"
         oncontextmenu="marketBuyCtxClear('${item.key}','${item.category}',event)">
         <div class="bag-item-rarity" style="background:${color};box-shadow:0 0 6px ${color}88;"></div>
-        ${isSel?`<div style="width:16px;height:16px;border-radius:50%;background:#ffaa33;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:#000;font-weight:bold;margin-right:-2px;">✓</div>`:''}
         <div style="width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;margin-left:6px;">${item.category==='weapon'?'⚔️':item.category==='armor'?'🛡️':item.category==='item'?(item.itemType==='potion'?'🧪':item.itemType==='food'?'🍖':'📦'):(()=>{try{const p=Object.values(GATH_DECK).flat().find(([,k])=>k===item.key);return p?p[3]:'📦';}catch(e){return'📦';}})()}</div>
         <div style="flex:1;min-width:0;margin-left:8px;">
           <div class="bag-item-name">${item.name}${hasGear&&item.enhance>0?`<span style="font-family:var(--font-mono);font-size:14px;color:#ffaa33;margin-left:6px;">+${item.enhance}</span>`:''}</div>
@@ -468,7 +467,6 @@ function renderSellFromBag(){
       onmouseup="endMarketSellHold()" onmouseleave="endMarketSellHold()"
       oncontextmenu="marketSellCtxClear('${uid}','${item._cat}','${item.key}',event)">
       <div class="bag-item-rarity" style="background:${color};box-shadow:0 0 6px ${color}88;"></div>
-      ${isSel?`<div style="width:16px;height:16px;border-radius:50%;background:#44dd88;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:#000;font-weight:bold;margin-right:-2px;">✓</div>`:''}
       <div style="width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;margin-left:6px;">${item._cat==='weapon'?'⚔️':item._cat==='armor'?'🛡️':item._cat==='item'?(item.itemType==='potion'?'🧪':item.itemType==='food'?'🍖':'📦'):(()=>{try{const p=Object.values(GATH_DECK).flat().find(([,k])=>k===item.key);return p?p[3]:'📦';}catch(e){return'📦';}})()}</div>
       <div style="flex:1;min-width:0;margin-left:8px;">
         <div class="bag-item-name">${getDisplayName(item)}${hasGear&&item.enhance>0?`<span style="font-family:var(--font-mono);font-size:13px;color:#ffaa33;margin-left:4px;">+${item.enhance}</span>`:''}</div>
