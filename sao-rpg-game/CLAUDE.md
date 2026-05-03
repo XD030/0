@@ -177,6 +177,7 @@ If you spot remaining cruft (orphan IIFEs, duplicate selectors, unreferenced HTM
    - The "File ownership" table above
    - The load-order diagram above
 5. Report what you changed in zh-TW (user's language). Be specific about file:line. Show before/after for non-trivial logic. End with a short test checklist for the user.
+6. **探索期的中間版本,working tree 覆蓋,不要 commit。** 一個 task 中如果使用者反覆說「再大一點 / 再小一點 / 換個位置」,中間每一版都不要 commit — 直接 str_replace 覆蓋現有改動,只 commit 最終決定的版本。理由:中間版本從未真的「活過」(使用者沒採用就被覆蓋),commit 進 history 等於對歷史撒謊,git blame 找「為什麼是 280px」會看到「先改 80→140→280」三個 commit 但其實只有 280 真的落地過。把 iteration 成本壓在 working tree、不要污染 git history。
 
 ## Things to NOT do
 
