@@ -237,12 +237,12 @@ function renderMarket(){
         oncontextmenu="marketBuyCtxClear('${item.key}','${item.category}',event)">
         <div class="bag-item-rarity" style="background:${color};box-shadow:0 0 6px ${color}88;"></div>
         <div style="width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;margin-left:6px;">${item.category==='weapon'?'⚔️':item.category==='armor'?'🛡️':item.category==='item'?(item.itemType==='potion'?'🧪':item.itemType==='food'?'🍖':'📦'):(()=>{try{const p=Object.values(GATH_DECK).flat().find(([,k])=>k===item.key);return p?p[3]:'📦';}catch(e){return'📦';}})()}</div>
-        <div style="flex:1;min-width:0;margin-left:8px;">
+        <div style="margin-left:8px;min-width:0;">
           <div class="bag-item-name">${item.name}${hasGear&&item.enhance>0?`<span style="font-family:var(--font-mono);font-size:14px;color:#ffaa33;margin-left:6px;">+${item.enhance}</span>`:''}</div>
           ${hasGear?`<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">${durBar(item.dur,item.maxDur,60)}<span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);">${item.dur}/${item.maxDur}</span></div>`:''}
         </div>
         ${qtyCtrl}
-        <div style="font-family:var(--font-mono);font-size:13px;color:#ffaa33;flex-shrink:0;width:72px;text-align:right;">${item.price} G</div>
+        <div style="font-family:var(--font-mono);font-size:13px;color:#ffaa33;flex-shrink:0;">${item.price} G</div>
       </div>`;
     }).join('');
 
