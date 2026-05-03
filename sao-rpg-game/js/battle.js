@@ -208,7 +208,7 @@ function enterFloor(floorNum){
   };
   // 顯示地圖
   document.getElementById('page-map-battle').style.display = 'flex';
-  document.getElementById('adv-tab-bar').style.display = 'none';
+  setBottomBarVisible(false);
   document.getElementById('map-floor-label').textContent = `FLOOR ${floorNum}`;
   showMap();
   updateMapHp();
@@ -217,7 +217,7 @@ function enterFloor(floorNum){
 
 function exitFloorMap(){
   document.getElementById('page-map-battle').style.display = 'none';
-  document.getElementById('adv-tab-bar').style.display = 'flex';
+  setBottomBarVisible(true);
   // 把HP寫回主檔state
   const s = initState();
   s.character.hp = Math.max(0, mockChar.hp);
@@ -841,7 +841,7 @@ function endBattle(result){
     setTimeout(()=>{
       // 退出樓層地圖層 + 還原底部 tab(對齊 exitFloorMap 的清理)
       document.getElementById('page-map-battle').style.display='none';
-      document.getElementById('adv-tab-bar').style.display='flex';
+      setBottomBarVisible(true);
       goPage('adventure');
       goAdvPage('map');
       renderFloorSelect();

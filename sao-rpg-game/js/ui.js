@@ -175,6 +175,21 @@ function closeFabMenu(selectIdx){
   }
 }
 
+/* ════════════════ 底部 Tab Bar + FAB 同步顯示 ════════════════ */
+/* 同步切換底部 tab bar 與生活技能 FAB:沒 tab bar 時 FAB 也藏起來。
+ * battle.js 進樓層地圖 / 退樓層 / 死亡復活共三點呼叫;
+ * 未來若還有「全螢幕、無底欄」的情境,直接改用此 helper。 */
+function setBottomBarVisible(visible){
+  const bar = document.getElementById('adv-tab-bar');
+  const fab = document.getElementById('life-fab');
+  if(bar) bar.style.display = visible ? 'flex' : 'none';
+  if(fab) fab.style.display = visible ? 'block' : 'none';
+  // 藏起來時若扇形選單還展開著,一併收起,避免殘留
+  if(!visible && typeof lifeFabOpen !== 'undefined' && lifeFabOpen){
+    closeFabMenu(-1);
+  }
+}
+
 /* FAB 拖曳狀態 */
 let _fabStartX=0, _fabStartY=0, _fabStartR=0, _fabStartB=0, _fabDragMoved=false;
 
