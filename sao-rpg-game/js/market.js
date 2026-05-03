@@ -241,6 +241,7 @@ function renderMarket(){
           <div class="bag-item-name">${item.name}${hasGear&&item.enhance>0?`<span style="font-family:var(--font-mono);font-size:14px;color:#ffaa33;margin-left:6px;">+${item.enhance}</span>`:''}</div>
           ${hasGear?`<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">${durBar(item.dur,item.maxDur,60)}<span style="font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.4);">${item.dur}/${item.maxDur}</span></div>`:''}
         </div>
+        <div style="flex:1;"></div>
         ${qtyCtrl}
         <div style="font-family:var(--font-mono);font-size:13px;color:#ffaa33;flex-shrink:0;">${item.price} G</div>
       </div>`;
@@ -453,6 +454,7 @@ function renderSellFromBag(){
         <div class="bag-item-rarity" style="background:${color};box-shadow:0 0 6px ${color}88;"></div>
         <div style="width:32px;height:32px;border-radius:4px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;margin-left:6px;">${item._cat==='item'?(item.itemType==='potion'?'🧪':item.itemType==='food'?'🍖':'📦'):(()=>{try{const p=Object.values(GATH_DECK).flat().find(([,k])=>k===item.key);return p?p[3]:'📦';}catch(e){return'📦';}})()}</div>
         <div class="bag-item-name" style="${isSel?'color:#44dd88;':''}">${getDisplayName(item)}</div>
+        <div style="flex:1;"></div>
         ${item.qty>1?`<div class="bag-item-qty" style="margin-right:6px;">×${item.qty}</div>`:''}
         ${qtyCtrl}
         <div style="font-family:var(--font-mono);font-size:13px;color:#44dd88;flex-shrink:0;">${sellPrice} G</div>
