@@ -131,6 +131,8 @@ These are bugs we already fixed. Don't re-create them.
 
 12. **Spec function name vs main repo can be out of sync** — when given a spec like "delete function X", first grep main repo to verify X exists and content matches spec expectations. If X doesn't exist or content differs significantly, stop and report. Don't substitute "similarly-named" alternatives.
 
+13. **`git rm --cached <gitlink>` 之後不要跑 `git add -A`** — `git rm --cached` 已經 staged 該檔案的 deletion,直接 `git commit` 即可。如果再跑 `git add -A`,untracked 的 nested worktree 目錄(裡面有 `.git` 檔)會被偵測成 embedded git repository、重新加進 index 變新的 gitlink,等於原地復活剛清掉的問題。Task 5 dry-run 抓到這個雷,正式做的時候跳過 `git add -A` 才沒踩進去。
+
 ## Conventions
 
 - **Strings in zh-TW**, comments mix zh-TW and English, code identifiers in English. Toasts start with `'// '` prefix (e.g. `showToast('// 裝備 ' + name)`).
