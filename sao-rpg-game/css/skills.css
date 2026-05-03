@@ -3,9 +3,8 @@
  *
  * 內容:
  *   1. 生活技能獨立 page(.lifeskill-page-header / .lifeskill-content + Lv/EXP 排版)
- *   2. 製造 sub-tab 容器(.ls-detail-header-tabs:留給 renderLifeSkillHeader 動態插入)
- *   3. 狩獵 (HUNT) 計時器 UI(.hunt-timer-wrap / .hunt-time / .hunt-bar / 按鈕)
- *   4. 生活技能計時器 (LIFE_TIMER) UI(.life-timer-item / .lt-{attr} / 按鈕)
+ *   2. 狩獵 (HUNT) 計時器 UI(.hunt-timer-wrap / .hunt-time / .hunt-bar / 按鈕)
+ *   3. 生活技能計時器 (LIFE_TIMER) UI(.life-timer-item / .lt-{attr} / 按鈕)
  *
  * 不在這裡(待 Phase 5b):
  *   - .btab-* 戰鬥/技能 tab 容器(也用於 COMING SOON 提示,先留 inline)
@@ -15,10 +14,11 @@
 
 
 /* ════════════════ 1. 生活技能獨立 page ════════════════ */
-.lifeskill-page-header{padding:var(--s4) var(--s4) var(--s3);border-bottom:1px solid rgba(255,255,255,.07);}
-.lifeskill-content{padding:var(--s5) var(--s4);min-height:120px;}
-.lifeskill-header-top{display:flex;align-items:flex-start;gap:var(--s3);margin-bottom:10px;}
-.lifeskill-close{font-family:var(--font-mono);font-size:18px;color:var(--text-sub);cursor:pointer;line-height:1;padding:4px 8px;letter-spacing:1px;flex-shrink:0;}
+.lifeskill-page-header{padding:var(--s4);border:1px solid var(--border);background:var(--bg2);margin:var(--s3) 0;}
+.lifeskill-content{padding:var(--s4);border:1px solid var(--border);background:var(--bg2);min-height:120px;}
+.lifeskill-header-top{display:block;margin-bottom:10px;}
+.lifeskill-header-main{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s3);margin-top:var(--s2);}
+.lifeskill-close{font-family:var(--font-mono);font-size:18px;color:var(--text-sub);cursor:pointer;line-height:1;padding:4px 8px 4px 0;letter-spacing:1px;display:inline-block;}
 .lifeskill-close:hover,.lifeskill-close:active{color:var(--blue);}
 .lifeskill-header-title-wrap{flex:1;}
 .lifeskill-header-title{font-family:var(--font-mono);font-size:18px;color:#fff;letter-spacing:2px;line-height:1.1;}
@@ -38,9 +38,6 @@
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
 }
 
-
-/* ════════════════ 2. 製造 sub-tab 容器(由 renderLifeSkillHeader 動態插入)════════════════ */
-.ls-detail-header-tabs{display:flex;margin-top:var(--s4);border-bottom:none !important;}
 
 
 /* ════════════════ 階段四:lifeskill 共用 component ════════════════ */
@@ -429,12 +426,14 @@
 @keyframes logAppear{to{opacity:1}}
 .cook-ok-btn{width:100%;padding:12px;font-family:var(--font-mono);font-size:12px;letter-spacing:3px;border:1px solid rgba(255,136,170,.4);color:#ff88aa;background:rgba(255,136,170,.04);cursor:pointer;position:relative;}
 .cook-ok-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:#ff88aa;box-shadow:0 0 8px #ff88aa;}
-/* CRFT tab bar:對齊 g-confirm modal 雙態按鈕風格(translucent + 8px radius),保留 CRFT 橘 #ffaa33 主題 */
-.crft-header-tabs{display:flex;flex:1;gap:10px;padding:0 var(--s4);margin-bottom:var(--s3);}
-.crft-header-tab{flex:1;padding:10px 0;text-align:center;font-family:var(--font-mono);font-size:12px;letter-spacing:2px;border-radius:8px;border:1px solid rgba(255,255,255,.15);color:var(--text-sub);background:rgba(255,255,255,.06);cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .15s;position:relative;}
-.crft-header-tab:active{transform:scale(.97);}
-.crft-header-tab.active{background:rgba(255,170,51,.15);color:#ffaa33;border-color:rgba(255,170,51,.4);}
-.crft-header-tab::after,.crft-header-tab.active::after{content:none;}
+/* 製造 sub-tab(box + 頂部發光線,sci-fi 風格,黃色主題) */
+.crft-header-tabs{display:flex;flex:1;gap:8px;padding:0;margin-bottom:var(--s4);}
+.crft-header-tab{flex:1;padding:10px 0;text-align:center;font-family:var(--font-mono);font-size:13px;letter-spacing:4px;cursor:pointer;position:relative;user-select:none;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);color:var(--text-sub);transition:background .2s,border-color .2s,color .2s,box-shadow .2s;}
+.crft-header-tab:active{transform:scale(.98);}
+.crft-header-tab.active{background:rgba(255,204,68,.1);border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(255,204,68,.25);}
+/* 頂部發光線(只在 active 顯示,蓋住原 border-top 顯得較粗) */
+.crft-header-tab::before{content:'';position:absolute;top:-1px;left:-1px;right:-1px;height:2px;background:var(--gold);box-shadow:0 0 8px var(--gold),0 0 16px var(--gold);opacity:0;transition:opacity .2s;}
+.crft-header-tab.active::before{opacity:1;}
 .crft-wrap{display:flex;flex-direction:column;gap:var(--s3);width:100%;}
 /* CRFT dropdown:8px 圓角 + hover/focus glow,與上方 tabs 統一視覺語言 */
 .crft-picker-row{display:flex;align-items:center;gap:var(--s2);padding:0;margin-top:var(--s3);margin-bottom:var(--s2);}

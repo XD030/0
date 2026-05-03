@@ -1605,16 +1605,6 @@ function renderCrftGame(container){
   // 用 ===null 哨兵(空字串 / 合法 key 都不該觸發還原)
   if(crftWeaponType===null) crftWeaponType=_crftReadLastPick('weapon');
   if(crftArmorType ===null) crftArmorType =_crftReadLastPick('armor');
-  const headerTabsId='ls-crft-tabs';
-  const headerTabs=document.getElementById(headerTabsId);
-  if(headerTabs){
-    headerTabs.style.display='flex';
-    const tabsWrap=headerTabs.closest('.ls-detail-header-tabs');if(tabsWrap)tabsWrap.style.borderBottom='1px solid rgba(255,170,51,.3)';
-    headerTabs.innerHTML=['weapon','armor','potion'].map(t=>`
-      <div class="crft-header-tab${crftTab===t?' active':''}" onclick="switchCrftTab('${t}',this)">
-        <span>${CRFT_TAB_LABELS[t]}</span>
-      </div>`).join('');
-  }
   // Task A:進製造頁先結算到期項(如果有,_resolveCraftEntry 會 reentrant 呼叫 renderCrftGame)
   if(typeof tickCrftQueue==='function'){
     const _s=load();
@@ -1627,10 +1617,21 @@ function renderCrftGame(container){
   // Task B:確保今日命名準則已生成(deterministic by today())
   if(typeof ensureNamingRule==='function') ensureNamingRule();
 
-  if(crftTab==='weapon') container.innerHTML=renderCrftWeaponHtml();
-  else if(crftTab==='armor') container.innerHTML=renderCrftArmorHtml();
-  else if(crftTab==='potion') container.innerHTML=renderCrftPotionHtml();
-  else container.innerHTML=`<div class="crft-empty">// COMING SOON</div>`;
+  // tabs(原由 lifeskill.js 在 page-header 渲染 + DOM 後填內容,
+  // 改為在 content 內自己組,讓 page-header 跟 content 變成兩張獨立的卡)
+  const tabsHtml=`<div class="crft-header-tabs" id="ls-crft-tabs">${
+    ['weapon','armor','potion'].map(t=>`
+      <div class="crft-header-tab crft-tab-${t}${crftTab===t?' active':''}" onclick="switchCrftTab('${t}',this)">
+        <span>${CRFT_TAB_LABELS[t]}</span>
+      </div>`).join('')
+  }</div>`;
+
+  let bodyHtml;
+  if(crftTab==='weapon') bodyHtml=renderCrftWeaponHtml();
+  else if(crftTab==='armor') bodyHtml=renderCrftArmorHtml();
+  else if(crftTab==='potion') bodyHtml=renderCrftPotionHtml();
+  else bodyHtml=`<div class="crft-empty">// COMING SOON</div>`;
+  container.innerHTML=tabsHtml+bodyHtml;
 
   // Task A:啟動 1Hz tick(冪等;有佇列 / 待命名才會持續跑,清空自停)
   if(typeof _startCrftQueueInterval==='function') _startCrftQueueInterval();

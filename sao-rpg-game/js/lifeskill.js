@@ -60,19 +60,18 @@ function renderLifeSkillHeader(attr, container){
   const gradStart={GATH:'#44ff88',HUNT:'#ffaa44',CRFT:'#ffdd66',MINE:'#dddddd',COOK:'#ff44aa'}[attr]||'#ffffff';
   const skillName=LIFE_SKILL_NAME[attr]||attr;
   const skillSub={GATH:'GATHERING',HUNT:'HUNTING',CRFT:'CRAFTING',MINE:'MINING',COOK:'COOKING'}[attr]||'LIFE SKILL';
-  const crftTabsHtml = (attr==='CRFT')
-    ? `<div class="ls-detail-header-tabs"><div class="crft-header-tabs" id="ls-crft-tabs"></div></div>`
-    : '';
   container.innerHTML=`
     <div class="lifeskill-header-top">
       <div class="lifeskill-close" onclick="closeLifeSkillPage()">✕</div>
-      <div class="lifeskill-header-title-wrap">
-        <div class="lifeskill-header-title">${skillName}</div>
-        <div class="lifeskill-header-sub" style="color:${color};">${skillSub}</div>
-      </div>
-      <div class="lifeskill-header-lv-wrap">
-        <div class="lifeskill-header-lv" style="color:${color};text-shadow:0 0 20px ${color}88;">${lv}</div>
-        <div class="lifeskill-header-lv-label" style="color:${color};">LEVEL</div>
+      <div class="lifeskill-header-main">
+        <div class="lifeskill-header-title-wrap">
+          <div class="lifeskill-header-title">${skillName}</div>
+          <div class="lifeskill-header-sub" style="color:${color};">${skillSub}</div>
+        </div>
+        <div class="lifeskill-header-lv-wrap">
+          <div class="lifeskill-header-lv" style="color:${color};text-shadow:0 0 20px ${color}88;">${lv}</div>
+          <div class="lifeskill-header-lv-label" style="color:${color};">LEVEL</div>
+        </div>
       </div>
     </div>
     <div class="lifeskill-header-exp-row">
@@ -82,7 +81,6 @@ function renderLifeSkillHeader(attr, container){
     <div class="lifeskill-header-exp-track">
       <div class="lifeskill-header-exp-fill" style="width:${pct}%;background:linear-gradient(to right,${gradStart},${color});box-shadow:0 0 8px ${color}88;"></div>
     </div>
-    ${crftTabsHtml}
   `;
 }
 
