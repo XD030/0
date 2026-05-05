@@ -69,6 +69,11 @@ function renderBattlePanel(){
           <div><div class="bar-row"><span class="bar-label">EXP</span><span style="font-family:var(--font-mono);font-size:10px;color:#00ffcc" id="ap-exp">—</span></div><div class="bar-track"><div class="exp-bar" id="ap-exp-bar" style="width:0%"></div></div></div>
         </div>
         <div class="pts-banner" id="ap-pts-banner"><span class="pts-big" id="ap-pts-num">0</span><span>屬性點待分配</span></div>
+        <div class="gear-tabs" id="ap-attr-tabs" style="margin:6px 0 8px;">
+          <div class="gear-tab attr-tab active" id="ap-attr-tab-phys" onclick="setAttrTab('phys')">肉體</div>
+          <div class="gear-tab attr-tab" id="ap-attr-tab-mind" onclick="setAttrTab('mind')">精神</div>
+          <div class="gear-tab attr-tab" id="ap-attr-tab-elem" onclick="setAttrTab('elem')">元素</div>
+        </div>
         <div class="radar-section" style="justify-content:center;">
           <svg id="ap-radar-svg" width="150" height="150" viewBox="0 0 136 136"></svg>
           <div class="r-attr-list" id="ap-attr-list"></div>

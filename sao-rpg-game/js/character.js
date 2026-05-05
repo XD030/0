@@ -23,9 +23,19 @@
 
 /* ════════════════ 1. 等級 / EXP / HP 公式 ════════════════ */
 function expReq(lv){return lv*lv*5;}
-function maxHp(lv, vit){return 100+lv*10+vit*20;}
-// MP 上限公式 — 注意:state.js 的 mp migration 內聯了同樣公式,改公式時兩處要同步
-function maxMp(lv, int){return 20 + (int||1)*2;}
+// E1:HP/MP 公式換成新表 §7.1 §7.2,簽名改吃整個 character 物件。
+// 等級暫時不參與公式(新表把成長放在屬性配點上;若之後要加等級加成,在這裡補)。
+// 注意:有效值換算(§0)是 E3 才接的,E1 階段直接用原始值,差距不大。
+// state.js 的 mp migration 內聯了 maxMp 同樣公式,改公式時兩處要同步。
+function maxHp(lv, c){
+  const mul = 1 + (c['體魄']||0)*0.011 + (c['意志']||0)*0.004 + (c['肉體抗性']||0)*0.004 + (c['力量']||0)*0.002;
+  return Math.round(1000 * mul);
+}
+
+function maxMp(lv, c){
+  const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
+  return Math.round(100 * mul);
+}
 function calcSlots(lv){return SLOT_UNLOCKS.filter(l=>lv>=l).length;}
 function nextSlot(lv){return SLOT_UNLOCKS.find(l=>l>lv)||null;}
 
@@ -45,7 +55,7 @@ function addExp(s, amt){
 }
 
 function applyHpPenalty(s, pct){
-  const mhp=maxHp(s.character.level, s.character.VIT);
+  const mhp=maxHp(s.character.level, s.character);
   let dmg=0;
   if(pct>=0.8) dmg=0;
   else if(pct>=0.5) dmg=Math.round(mhp*0.05);
@@ -145,8 +155,43 @@ function fmtSubVal(attr, i, val){
 
 
 /* ════════════════ 3. 屬性分配狀態 ════════════════ */
-let reserveAlloc={STR:0, VIT:0, DEX:0, AGI:0, INT:0, LUK:0};
+// E1:12 中文 key,初始全 0;reserveAdj/confirmAlloc 會更新此物件
+let reserveAlloc={};
+ATTRS.forEach(a=>reserveAlloc[a]=0);
 let subAttrView=null; // null=主視圖, 'STR'/'VIT'/...=細屬性視圖
+
+// E1.5:屬性 tab 切換('phys' 肉體系 / 'mind' 精神系),預設肉體
+// 不存進存檔,重整網頁回預設
+let attrTab='phys';
+
+// E3.5:元素細節頁全域 ('fire'/'water'/.../null)
+let elemView=null;
+
+function setAttrTab(tab){
+  if(tab!=='phys' && tab!=='mind' && tab!=='elem') return;
+  attrTab=tab;
+  // 切 tab 時離開所有子屬性頁 / 元素細節頁
+  subAttrView=null;
+  elemView=null;
+  if(typeof renderReserve==='function') renderReserve();
+  if(typeof renderReserveWithPrefix==='function') renderReserveWithPrefix('ap-');
+  ['phys','mind','elem'].forEach(t=>{
+    document.getElementById('r-attr-tab-'+t)?.classList.toggle('active', t===tab);
+    document.getElementById('ap-attr-tab-'+t)?.classList.toggle('active', t===tab);
+  });
+}
+
+function setElemView(elem){
+  if(!ELEM_DETAIL[elem]) return;
+  elemView=elem;
+  if(typeof renderReserve==='function') renderReserve();
+  if(typeof renderReserveWithPrefix==='function') renderReserveWithPrefix('ap-');
+}
+function closeElemView(){
+  elemView=null;
+  if(typeof renderReserve==='function') renderReserve();
+  if(typeof renderReserveWithPrefix==='function') renderReserveWithPrefix('ap-');
+}
 
 
 /* ════════════════ 4. 屬性分配互動 ════════════════ */
@@ -164,7 +209,8 @@ function confirmAlloc(p){
   ATTRS.forEach(attr=>{ c[attr]=(c[attr]||0)+(reserveAlloc[attr]||0); });
   const total=Object.values(reserveAlloc).reduce((s,v)=>s+v, 0);
   c.pendingPoints=Math.max(0, c.pendingPoints-total);
-  reserveAlloc={STR:0, VIT:0, DEX:0, AGI:0, INT:0, LUK:0};
+  reserveAlloc={};
+  ATTRS.forEach(a=>reserveAlloc[a]=0);
   save(s);
   if(p) renderReserveWithPrefix(p); else renderReserve();
   showToast('// 屬性分配完成');
@@ -175,7 +221,7 @@ function allocate(attr){
   if(!s.character.pendingPoints) return;
   s.character[attr]++;
   s.character.pendingPoints--;
-  const nm=maxHp(s.character.level, s.character.VIT);
+  const nm=maxHp(s.character.level, s.character);
   if(s.character.hp>nm) s.character.hp=nm;
   save(s);
   if(currentAdvPage==='reserve') renderReserve();
@@ -183,10 +229,12 @@ function allocate(attr){
 }
 
 function openSubAttr(attr){
+  if(!ATTR_INFLUENCES[attr]) return;
   subAttrView=attr;
   renderReserve();
 }
 function openSubAttrPrefix(p, attr){
+  if(!ATTR_INFLUENCES[attr]) return;
   subAttrView=attr;
   renderReserveWithPrefix(p);
 }
@@ -198,7 +246,7 @@ function closeSubAttr(p){
 
 /* ════════════════ 5. 角色狀態頁渲染(舊主頁,目前 page-status 沿用) ════════════════ */
 function renderStatus(){
-  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c.VIT);
+  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c);
   const nameEl=document.getElementById('s-name'); if(nameEl) nameEl.textContent=c.name;
   const lvEl2=document.getElementById('s-level'); if(lvEl2) lvEl2.textContent=c.level;
   const hpBar=document.getElementById('s-hp-bar'); const hpEl=document.getElementById('s-hp');
@@ -242,12 +290,12 @@ function switchGear(tab){
 
 /* ════════════════ 6. 冒險面板狀態頁渲染 ════════════════ */
 function renderReserve(){
-  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c.VIT);
+  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c);
   document.getElementById('r-name').textContent=c.name;
   document.getElementById('r-level').textContent=c.level;
   document.getElementById('r-hp-bar').style.width=Math.min(100,(c.hp/mhp)*100)+'%';
   document.getElementById('r-hp').textContent=`${c.hp}/${mhp}`;
-  const mmp=maxMp(c.level, c.INT);
+  const mmp=maxMp(c.level, c);
   const _rmpb=document.getElementById('r-mp-bar');
   if(_rmpb) _rmpb.style.width=Math.min(100,((c.mp||0)/mmp)*100)+'%';
   const _rmp=document.getElementById('r-mp');
@@ -257,91 +305,146 @@ function renderReserve(){
   document.getElementById('r-exp').textContent=c.level>=100?'MAX':`${c.exp}/${needed}`;
   const hasPts=c.pendingPoints>0;
   document.getElementById('r-pts-banner').classList.toggle('show', hasPts);
-  const equipBonus={STR:0,VIT:0,DEX:0,AGI:0,INT:0,LUK:0};
+  // E1:equipBonus 改 12 中文 key;regex 改成「任意非空白前綴 + 空白 + +數字」
+  // 完成度依賴 E2(items.js 武器/防具 stat 字串改中文),E2 完成前所有 stat 不會匹配 → 全 0,屬於預期狀態
+  const equipBonus={};
+  ATTRS.forEach(a=>equipBonus[a]=0);
   Object.keys(s.equipment||{}).forEach(key=>{
     const item=getEquipItem(s, key);
     if(item && item.stat){
-      const m=item.stat.match(/([A-Z]+)\s*\+(\d+)/);
+      const m=item.stat.match(/(\S+?)\s*\+(\d+)/);
       if(m && equipBonus[m[1]]!==undefined) equipBonus[m[1]]+=parseInt(m[2]);
     }
   });
   const al=document.getElementById('r-attr-list'); al.innerHTML='';
   const rSvg=document.getElementById('r-radar-svg');
-  if(subAttrView){
-    const subVals=calcSubAttrs(subAttrView, c, equipBonus);
-    drawSubRadar2(subAttrView, subVals);
-    if(rSvg){
-      rSvg.style.cursor='pointer';
-      rSvg.style.outline='none';
-      rSvg.setAttribute('tabindex','0');
-      rSvg.onclick=(e)=>{
-        const t=e.target;
-        if(t===rSvg||t.tagName==='polygon'||t.tagName==='line'||t.tagName==='defs'||t.tagName==='filter')
-          closeSubAttr();
-      };
-    }
-    const color=ATTR_COLOR[subAttrView]||'#fff';
-    const subMax=Math.max(...subVals, 1);
-    (SUB_ATTRS[subAttrView]||[]).forEach((name, i)=>{
-      const val=subVals[i]||0;
-      const pct=Math.min(100, Math.round(val/subMax*100));
-      const disp=fmtSubVal(subAttrView, i, val);
-      const row=document.createElement('div'); row.className='r-attr-row';
+
+  // E3:子屬性頁分支 — 列出該屬性影響的衍生值(長條形式)
+  if(subAttrView && typeof ATTR_INFLUENCES==='object' && ATTR_INFLUENCES[subAttrView]){
+    const tabsEl = document.getElementById('r-attr-tabs');
+    if(tabsEl) tabsEl.style.display='none';
+    if(rSvg && rSvg.parentElement) rSvg.parentElement.style.display='none';
+    document.getElementById('r-confirm-btn').style.display='none';
+
+    // 標題列(可點返回)
+    const head = document.createElement('div');
+    head.className='r-sub-head';
+    head.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 4px;cursor:pointer;border-bottom:1px solid rgba(200,220,240,.15);margin-bottom:8px;';
+    head.innerHTML =
+      '<span style="color:var(--cyan);font-size:14px;">←</span>'+
+      '<span style="color:'+(ATTR_COLOR[subAttrView]||'#fff')+';font-weight:bold;font-size:13px;">'+(ATTR_DISPLAY_NAME[subAttrView]||subAttrView)+'</span>'+
+      '<span style="color:#888;font-size:10px;">影響的衍生值</span>';
+    head.onclick = ()=>closeSubAttr();
+    al.appendChild(head);
+
+    // E3.5+:衍生值兩欄 grid
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0 12px;';
+    al.appendChild(grid);
+
+    // E3.5+:過濾掉「分數」中間值,只列最終效果
+    const SCORE_KEYS = ['physScore','magicScore','bluntScore','slashScore','pierceScore'];
+    ATTR_INFLUENCES[subAttrView].filter(k=>!SCORE_KEYS.includes(k)).forEach(key=>{
+      const def = DERIVED_DEFS[key];
+      if(!def) return;
+      const val = def.fn(c);
+      const txt = fmtDerived(val, def.kind);
+      const color = ATTR_COLOR[subAttrView]||'#fff';
+      const row = document.createElement('div');
+      row.className='r-attr-row';
+      row.innerHTML =
+        '<div class="r-attr-top" style="padding:3px 0;">'+
+          '<span class="r-attr-key" style="color:#ddd;font-size:13px;">'+def.label+'</span>'+
+          '<span class="r-attr-num" style="font-size:13px;color:'+(ATTR_COLOR[subAttrView]||'#fff')+';">'+txt+'</span>'+
+        '</div>';
+      grid.appendChild(row);
+    });
+    return;
+  }
+
+  // E3:離開子屬性頁時還原主視圖元素顯示
+  const tabsEl = document.getElementById('r-attr-tabs');
+  if(tabsEl) tabsEl.style.display='';
+  if(rSvg && rSvg.parentElement) rSvg.parentElement.style.display='';
+
+  // E3.5:元素 tab 主視圖 — 列 9 個元素 row,沒雷達圖
+  if(attrTab === 'elem'){
+    if(rSvg && rSvg.parentElement) rSvg.parentElement.style.display='none';
+    document.getElementById('r-confirm-btn').style.display='none';
+
+    ELEM_KEYS.forEach(elemKey=>{
+      const def = ELEM_DETAIL[elemKey];
+      const senseVal = DERIVED_DEFS[def.sense].fn(c);
+      const resistVal = DERIVED_DEFS[def.resist].fn(c);
+      const aux = def.detail[0];
+      const auxVal = aux ? aux.fn(c) : 0;
+      const auxLabel = aux ? aux.label : '';
+      const row = document.createElement('div');
+      row.className='r-attr-row';
+      row.style.cssText='margin:0;padding:0;';
+      row.innerHTML =
+        '<div class="r-attr-top" style="padding:3px 0;">'+
+          '<span class="r-attr-key" style="color:'+def.color+';font-size:13px;font-weight:bold;">'+def.label+'</span>'+
+          '<span class="r-attr-num" style="font-size:12px;">'+
+            (aux ? ('<span style="color:#aaa;">'+auxLabel+' </span><span style="color:'+def.color+';opacity:0.6;">'+auxVal.toFixed(0)+'</span><span style="color:#555;"> / </span>') : '')+
+            '<span style="color:#aaa;">感應 </span><span style="color:'+def.color+';">'+senseVal.toFixed(1)+'%</span>'+
+            '<span style="color:#555;"> / </span>'+
+            '<span style="color:#aaa;">抵抗 </span><span style="color:'+def.color+';opacity:0.7;">'+resistVal.toFixed(1)+'%</span>'+
+          '</span>'+
+        '</div>';
+      al.appendChild(row);
+    });
+    return;
+  }
+
+  if(rSvg){
+    rSvg.style.cursor='default';
+    rSvg.onclick=null;
+    rSvg.parentElement.querySelectorAll('.sub-radar-label').forEach(el=>el.remove());
+  }
+  // E1.5:當前 tab 對應的 6 個屬性
+  const tabAttrs = (attrTab==='mind') ? ATTRS_MIND : ATTRS_PHYS;
+  drawRadar2(tabAttrs.map(a=>(c[a]||0)+(equipBonus[a]||0)+(reserveAlloc[a]||0)), tabAttrs);
+  const maxVal=50;
+  const totalAllocated=Object.values(reserveAlloc).reduce((s,v)=>s+v, 0);
+  const remaining=c.pendingPoints-totalAllocated;
+  if(hasPts){
+    document.getElementById('r-pts-num').textContent=remaining;
+    document.getElementById('r-confirm-btn').style.display=totalAllocated>0?'block':'none';
+  } else {
+    document.getElementById('r-confirm-btn').style.display='none';
+  }
+  tabAttrs.forEach(attr=>{
+    const val=c[attr]||0; const bonus=equipBonus[attr]||0;
+    const pending=reserveAlloc[attr]||0;
+    const display=val+pending;
+    const pct=Math.min(100, Math.round((display/maxVal)*100));
+    const color=ATTR_COLOR[attr]||'#fff';
+    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    const row=document.createElement('div'); row.className='r-attr-row';
+    if(hasPts){
       row.innerHTML=
-        `<div class="r-attr-top">`+
-          `<span class="r-attr-key" style="color:${color};">${name}</span>`+
-          `<span class="r-attr-num">${disp}</span>`+
+        `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">`+
+          `<button class="r-alloc-btn" onclick="reserveAdj('${attr}',-1)" ${pending<=0?'disabled':''}>−</button>`+
+          `<span class="r-attr-key" style="color:${color}">${label}</span>`+
+          `<button class="r-alloc-btn" onclick="reserveAdj('${attr}',1)" ${remaining<=0?'disabled':''}>＋</button>`+
+          `<span style="flex:1"></span>`+
+          `<span style="display:inline-flex;align-items:center;justify-content:flex-end;min-width:80px;">`+
+            `<span class="r-alloc-val" style="color:${pending>0?'var(--cyan)':'#fff'};min-width:28px;text-align:right;">${display}</span>`+
+            `<span class="r-attr-bonus" style="min-width:44px;text-align:left;">${bonus>0?`+${bonus}`:''}</span>`+
+          `</span>`+
         `</div>`+
         `<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:${pct}%;background:${color};box-shadow:0 0 4px ${color}88;"></div></div>`;
-      al.appendChild(row);
-    });
-  } else {
-    if(rSvg){
-      rSvg.style.cursor='default';
-      rSvg.onclick=null;
-      rSvg.parentElement.querySelectorAll('.sub-radar-label').forEach(el=>el.remove());
-    }
-    drawRadar2(ATTRS.map(a=>(c[a]||0)+(equipBonus[a]||0)+(reserveAlloc[a]||0)));
-    const maxVal=50;
-    const totalAllocated=Object.values(reserveAlloc).reduce((s,v)=>s+v, 0);
-    const remaining=c.pendingPoints-totalAllocated;
-    if(hasPts){
-      document.getElementById('r-pts-num').textContent=remaining;
-      document.getElementById('r-confirm-btn').style.display=totalAllocated>0?'block':'none';
     } else {
-      document.getElementById('r-confirm-btn').style.display='none';
+      row.innerHTML=
+        `<div class="r-attr-top">`+
+          `<span class="r-attr-key" style="color:${color}">${label}</span>`+
+          `<span><span class="r-attr-num">${val}</span>${bonus>0?`<span class="r-attr-bonus">+${bonus}</span>`:''}</span>`+
+        `</div>`+
+        `<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:${pct}%;background:${color};box-shadow:0 0 4px ${color}88;"></div></div>`;
     }
-    ATTRS.forEach(attr=>{
-      const val=c[attr]||0; const bonus=equipBonus[attr]||0;
-      const pending=reserveAlloc[attr]||0;
-      const display=val+pending;
-      const pct=Math.min(100, Math.round((display/maxVal)*100));
-      const color=ATTR_COLOR[attr]||'#fff';
-      const row=document.createElement('div'); row.className='r-attr-row';
-      if(hasPts){
-        row.innerHTML=
-          `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">`+
-            `<button class="r-alloc-btn" onclick="reserveAdj('${attr}',-1)" ${pending<=0?'disabled':''}>−</button>`+
-            `<span class="r-attr-key" style="color:${color}">${attr}</span>`+
-            `<button class="r-alloc-btn" onclick="reserveAdj('${attr}',1)" ${remaining<=0?'disabled':''}>＋</button>`+
-            `<span style="flex:1"></span>`+
-            `<span style="display:inline-flex;align-items:center;justify-content:flex-end;min-width:80px;">`+
-              `<span class="r-alloc-val" style="color:${pending>0?'var(--cyan)':'#fff'};min-width:28px;text-align:right;">${display}</span>`+
-              `<span class="r-attr-bonus" style="min-width:44px;text-align:left;">${bonus>0?`+${bonus}`:''}</span>`+
-            `</span>`+
-          `</div>`+
-          `<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:${pct}%;background:${color};box-shadow:0 0 4px ${color}88;"></div></div>`;
-      } else {
-        row.innerHTML=
-          `<div class="r-attr-top">`+
-            `<span class="r-attr-key" style="color:${color}">${attr}</span>`+
-            `<span><span class="r-attr-num">${val}</span>${bonus>0?`<span class="r-attr-bonus">+${bonus}</span>`:''}</span>`+
-          `</div>`+
-          `<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:${pct}%;background:${color};box-shadow:0 0 4px ${color}88;"></div></div>`;
-      }
-      al.appendChild(row);
-    });
-  }
+    al.appendChild(row);
+  });
   const col1=document.getElementById('r-equip-col-1');
   const col2=document.getElementById('r-equip-col-2');
   col1.innerHTML=''; col2.innerHTML='';
@@ -395,13 +498,13 @@ function renderReserve(){
 /* ADV 面板用的 renderReserve(可指定前綴,目前只有 r- 在用,但保留多前綴介面) */
 function renderReserveWithPrefix(p){
   const g=id=>document.getElementById(p+id);
-  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c.VIT);
+  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c);
   if(!g('name')) return;
   g('name').textContent=c.name;
   g('level').textContent=c.level;
   g('hp-bar').style.width=Math.min(100,(c.hp/mhp)*100)+'%';
   g('hp').textContent=c.hp+'/'+mhp;
-  const mmp=maxMp(c.level, c.INT);
+  const mmp=maxMp(c.level, c);
   if(g('mp-bar')) g('mp-bar').style.width=Math.min(100,((c.mp||0)/mmp)*100)+'%';
   if(g('mp')) g('mp').textContent=(c.mp||0)+'/'+mmp;
   const needed=c.level<100?expReq(c.level):1;
@@ -409,78 +512,135 @@ function renderReserveWithPrefix(p){
   g('exp').textContent=c.level>=100?'MAX':c.exp+'/'+needed;
   const hasPts=c.pendingPoints>0;
   g('pts-banner').classList.toggle('show', hasPts);
-  const equipBonus={STR:0,VIT:0,DEX:0,AGI:0,INT:0,LUK:0};
+  // E1:同 renderReserve;E2 之前所有 stat 不會匹配
+  const equipBonus={};
+  ATTRS.forEach(a=>equipBonus[a]=0);
   Object.keys(s.equipment||{}).forEach(key=>{
     const item=getEquipItem(s, key);
     if(item && item.stat){
-      const m=item.stat.match(/([A-Z]+)\s*\+(\d+)/);
+      const m=item.stat.match(/(\S+?)\s*\+(\d+)/);
       if(m && equipBonus[m[1]]!==undefined) equipBonus[m[1]]+=parseInt(m[2]);
     }
   });
-  drawRadar2WithPrefix(p, ATTRS.map(a=>(c[a]||0)+(equipBonus[a]||0)+(reserveAlloc[a]||0)));
   const al=g('attr-list'); al.innerHTML='';
   const pSvg=document.getElementById(p+'radar-svg');
-  if(subAttrView){
-    const subVals=calcSubAttrs(subAttrView, c, equipBonus);
-    drawSubRadar2WithPrefix(p, subAttrView, subVals);
-    if(pSvg){
-      pSvg.style.cursor='pointer';
-      pSvg.onclick=(e)=>{
-        if(e.target===pSvg||e.target.tagName==='polygon'||e.target.tagName==='line') closeSubAttr(p);
-      };
-    }
-    const color=ATTR_COLOR[subAttrView]||'#fff';
-    const subMax=Math.max(...subVals, 1);
-    (SUB_ATTRS[subAttrView]||[]).forEach((name, i)=>{
-      const val=subVals[i]||0;
-      const pct=Math.min(100, Math.round(val/subMax*100));
-      const disp=fmtSubVal(subAttrView, i, val);
-      const row=document.createElement('div'); row.className='r-attr-row';
-      row.style.flex='1';
-      row.innerHTML='<div class="r-attr-top">'+
-        '<span class="r-attr-key" style="color:'+color+';">'+name+'</span>'+
-        '<span class="r-attr-num">'+disp+'</span>'+
-        '</div>'+
-        '<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:'+pct+'%;background:'+color+';box-shadow:0 0 4px '+color+'88;"></div></div>';
-      al.appendChild(row);
+
+  // E3:子屬性頁分支(冒險面板版)
+  if(subAttrView && typeof ATTR_INFLUENCES==='object' && ATTR_INFLUENCES[subAttrView]){
+    const tabsEl = document.getElementById(p+'attr-tabs');
+    if(tabsEl) tabsEl.style.display='none';
+    if(pSvg && pSvg.parentElement) pSvg.parentElement.style.display='none';
+    if(g('confirm-btn')) g('confirm-btn').style.display='none';
+
+    const head = document.createElement('div');
+    head.className='r-sub-head';
+    head.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 4px;cursor:pointer;border-bottom:1px solid rgba(200,220,240,.15);margin-bottom:8px;';
+    head.innerHTML =
+      '<span style="color:var(--cyan);font-size:14px;">←</span>'+
+      '<span style="color:'+(ATTR_COLOR[subAttrView]||'#fff')+';font-weight:bold;font-size:13px;">'+(ATTR_DISPLAY_NAME[subAttrView]||subAttrView)+'</span>'+
+      '<span style="color:#888;font-size:10px;">影響的衍生值</span>';
+    head.onclick = ()=>closeSubAttr(p);
+    al.appendChild(head);
+
+    // E3.5+:衍生值兩欄 grid
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0 12px;';
+    al.appendChild(grid);
+
+    // E3.5+:過濾掉「分數」中間值,只列最終效果
+    const SCORE_KEYS = ['physScore','magicScore','bluntScore','slashScore','pierceScore'];
+    ATTR_INFLUENCES[subAttrView].filter(k=>!SCORE_KEYS.includes(k)).forEach(key=>{
+      const def = DERIVED_DEFS[key];
+      if(!def) return;
+      const val = def.fn(c);
+      const txt = fmtDerived(val, def.kind);
+      const color = ATTR_COLOR[subAttrView]||'#fff';
+      const row = document.createElement('div');
+      row.className='r-attr-row';
+      row.innerHTML =
+        '<div class="r-attr-top" style="padding:3px 0;">'+
+          '<span class="r-attr-key" style="color:#ddd;font-size:13px;">'+def.label+'</span>'+
+          '<span class="r-attr-num" style="font-size:13px;color:'+(ATTR_COLOR[subAttrView]||'#fff')+';">'+txt+'</span>'+
+        '</div>';
+      grid.appendChild(row);
     });
-  } else {
-    if(pSvg){
-      pSvg.style.cursor='default'; pSvg.onclick=null;
-      pSvg.parentElement.querySelectorAll('.sub-radar-label').forEach(el=>el.remove());
-    }
-    const totalAllocated=Object.values(reserveAlloc).reduce((s,v)=>s+v, 0);
-    const remaining=c.pendingPoints-totalAllocated;
-    if(hasPts){
-      g('pts-num').textContent=remaining;
-      g('confirm-btn').style.display=totalAllocated>0?'block':'none';
-    } else {
-      g('confirm-btn').style.display='none';
-    }
-    ATTRS.forEach(attr=>{
-      const val=c[attr]||0; const bonus=equipBonus[attr]||0; const pending=reserveAlloc[attr]||0;
-      const display=val+pending;
-      const pct=Math.min(100, Math.round((display/50)*100));
-      const color=ATTR_COLOR[attr]||'#fff';
-      const row=document.createElement('div'); row.className='r-attr-row';
-      if(hasPts){
-        row.innerHTML='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'+
-          '<button class="r-alloc-btn" onclick="reserveAdj(\u0022'+attr+'\u0022,-1,\u0022'+p+'\u0022)" '+(pending<=0?'disabled':'')+'>−</button>'+
-          '<span class="r-attr-key" style="color:'+color+'">'+attr+'</span>'+
-          '<button class="r-alloc-btn" onclick="reserveAdj(\u0022'+attr+'\u0022,1,\u0022'+p+'\u0022)" '+(remaining<=0?'disabled':'')+'>＋</button>'+
-          '<span style="flex:1"></span>'+
-          '<span class="r-alloc-val" style="color:'+(pending>0?'var(--cyan)':'#fff')+'">'+display+'</span>'+
-          (bonus>0?'<span class="r-attr-bonus">+'+bonus+'</span>':'')+
-          '</div>'+
-          '<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>';
-      } else {
-        row.innerHTML='<div class="r-attr-top"><span class="r-attr-key" style="color:'+color+'">'+attr+'</span>'+
-          '<span><span class="r-attr-num">'+val+'</span>'+(bonus>0?'<span class="r-attr-bonus">+'+bonus+'</span>':'')+
-          '</span></div><div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>';
-      }
-      al.appendChild(row);
-    });
+    return;
   }
+
+  // E3:離開子屬性頁時還原主視圖元素顯示
+  const tabsEl = document.getElementById(p+'attr-tabs');
+  if(tabsEl) tabsEl.style.display='';
+  if(pSvg && pSvg.parentElement) pSvg.parentElement.style.display='';
+
+  // E3.5:元素 tab 主視圖(prefix 版)
+  if(attrTab === 'elem'){
+    if(pSvg && pSvg.parentElement) pSvg.parentElement.style.display='none';
+    if(g('confirm-btn')) g('confirm-btn').style.display='none';
+
+    ELEM_KEYS.forEach(elemKey=>{
+      const def = ELEM_DETAIL[elemKey];
+      const senseVal = DERIVED_DEFS[def.sense].fn(c);
+      const resistVal = DERIVED_DEFS[def.resist].fn(c);
+      const aux = def.detail[0];
+      const auxVal = aux ? aux.fn(c) : 0;
+      const auxLabel = aux ? aux.label : '';
+      const row = document.createElement('div');
+      row.className='r-attr-row';
+      row.style.cssText='margin:0;padding:0;';
+      row.innerHTML =
+        '<div class="r-attr-top" style="padding:3px 0;">'+
+          '<span class="r-attr-key" style="color:'+def.color+';font-size:13px;font-weight:bold;">'+def.label+'</span>'+
+          '<span class="r-attr-num" style="font-size:12px;">'+
+            (aux ? ('<span style="color:#aaa;">'+auxLabel+' </span><span style="color:'+def.color+';opacity:0.6;">'+auxVal.toFixed(0)+'</span><span style="color:#555;"> / </span>') : '')+
+            '<span style="color:#aaa;">感應 </span><span style="color:'+def.color+';">'+senseVal.toFixed(1)+'%</span>'+
+            '<span style="color:#555;"> / </span>'+
+            '<span style="color:#aaa;">抵抗 </span><span style="color:'+def.color+';opacity:0.7;">'+resistVal.toFixed(1)+'%</span>'+
+          '</span>'+
+        '</div>';
+      al.appendChild(row);
+    });
+    return;
+  }
+
+  // E1.5:當前 tab 對應的 6 個屬性
+  const tabAttrs = (attrTab==='mind') ? ATTRS_MIND : ATTRS_PHYS;
+  drawRadar2WithPrefix(p, tabAttrs.map(a=>(c[a]||0)+(equipBonus[a]||0)+(reserveAlloc[a]||0)), tabAttrs);
+  if(pSvg){
+    pSvg.style.cursor='default'; pSvg.onclick=null;
+    pSvg.parentElement.querySelectorAll('.sub-radar-label').forEach(el=>el.remove());
+  }
+  const totalAllocated=Object.values(reserveAlloc).reduce((s,v)=>s+v, 0);
+  const remaining=c.pendingPoints-totalAllocated;
+  if(hasPts){
+    g('pts-num').textContent=remaining;
+    g('confirm-btn').style.display=totalAllocated>0?'block':'none';
+  } else {
+    g('confirm-btn').style.display='none';
+  }
+  tabAttrs.forEach(attr=>{
+    const val=c[attr]||0; const bonus=equipBonus[attr]||0; const pending=reserveAlloc[attr]||0;
+    const display=val+pending;
+    const pct=Math.min(100, Math.round((display/50)*100));
+    const color=ATTR_COLOR[attr]||'#fff';
+    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    const row=document.createElement('div'); row.className='r-attr-row';
+    if(hasPts){
+      row.innerHTML='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'+
+        '<button class="r-alloc-btn" onclick="reserveAdj(\u0022'+attr+'\u0022,-1,\u0022'+p+'\u0022)" '+(pending<=0?'disabled':'')+'>−</button>'+
+        '<span class="r-attr-key" style="color:'+color+'">'+label+'</span>'+
+        '<button class="r-alloc-btn" onclick="reserveAdj(\u0022'+attr+'\u0022,1,\u0022'+p+'\u0022)" '+(remaining<=0?'disabled':'')+'>＋</button>'+
+        '<span style="flex:1"></span>'+
+        '<span class="r-alloc-val" style="color:'+(pending>0?'var(--cyan)':'#fff')+'">'+display+'</span>'+
+        (bonus>0?'<span class="r-attr-bonus">+'+bonus+'</span>':'')+
+        '</div>'+
+        '<div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>';
+    } else {
+      row.innerHTML='<div class="r-attr-top"><span class="r-attr-key" style="color:'+color+'">'+label+'</span>'+
+        '<span><span class="r-attr-num">'+val+'</span>'+(bonus>0?'<span class="r-attr-bonus">+'+bonus+'</span>':'')+
+        '</span></div><div class="r-attr-bar-track"><div class="r-attr-bar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>';
+    }
+    al.appendChild(row);
+  });
   const col1=g('equip-col-1'); const col2=g('equip-col-2');
   col1.innerHTML=''; col2.innerHTML='';
   const COL1=[{key:'helmet',name:'HELMET'},{key:'chest',name:'CHEST'},{key:'pants',name:'PANTS'},{key:'boots',name:'BOOTS'}];
@@ -569,53 +729,60 @@ function drawRadar(vals){
   svg.innerHTML=h;
 }
 
-/* drawRadar2:戰鬥屬性(6 個 ATTRS)的雷達圖,渲染到 #r-radar-svg */
-function drawRadar2(vals){
+/* drawRadar2:6 頂點 polygon 雷達圖,渲染到 #r-radar-svg
+ * 第一參數 vals 為 6 個數值,第二參數 attrs 為對應 6 個屬性 key(用來放外圍 label) */
+function drawRadar2(vals, attrs){
   const svg=document.getElementById('r-radar-svg');
+  if(!svg) return;
   const cx=68, cy=68, r=48, n=6;
   const mv=Math.max(...vals, 10);
   const angle=i=>i*2*Math.PI/n-Math.PI/2;
   const pt=(i, ratio)=>[cx+r*ratio*Math.cos(angle(i)), cy+r*ratio*Math.sin(angle(i))];
   let h='<defs><filter id="glow2"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
   [.33,.66,1].forEach(ratio=>{
-    const ps=ATTRS.map((_,i)=>pt(i, ratio).join(',')).join(' ');
+    const ps=attrs.map((_,i)=>pt(i, ratio).join(',')).join(' ');
     h+=`<polygon points="${ps}" fill="none" stroke="rgba(200,220,240,.12)" stroke-width="1"/>`;
   });
-  ATTRS.forEach((_, i)=>{
+  attrs.forEach((_, i)=>{
     const [x,y]=pt(i, 1);
     h+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(200,220,240,.12)" stroke-width="1"/>`;
   });
   const vps=vals.map((v, i)=>pt(i, Math.min(v/mv, 1)).join(',')).join(' ');
   h+=`<polygon points="${vps}" fill="rgba(0,200,255,.1)" stroke="rgba(0,200,255,.75)" stroke-width="1.5" filter="url(#glow2)"/>`;
-  ATTRS.forEach((attr, i)=>{
-    const [x,y]=pt(i, 1.28);
-    h+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,monospace" font-size="10" fill="${ATTR_COLOR[attr]}" letter-spacing="1" style="cursor:pointer;" onclick="openSubAttr('${attr}')">${attr}</text>`;
+  attrs.forEach((attr, i)=>{
+    const [x,y]=pt(i, 1.32);
+    const color=ATTR_COLOR[attr]||'#fff';
+    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    // E1.5:label 是中文(2-3 字),不再用 letter-spacing(中文字會被拉開)
+    h+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,Noto Sans TC,monospace" font-size="10" fill="${color}" style="cursor:pointer;" onclick="openSubAttr('${attr}')">${label}</text>`;
   });
   svg.innerHTML=h;
 }
 
-/* drawRadar2WithPrefix:同 drawRadar2 但 SVG ID 帶前綴(支援多面板)*/
-function drawRadar2WithPrefix(p, vals){
+/* drawRadar2WithPrefix:同 drawRadar2,SVG ID 帶前綴(冒險面板用) */
+function drawRadar2WithPrefix(p, vals, attrs){
   const svg=document.getElementById(p+'radar-svg');
   if(!svg) return;
   const cx=68, cy=68, r=48, n=6;
   const mv=Math.max(...vals, 10);
   const angle=i=>i*2*Math.PI/n-Math.PI/2;
   const pt=(i, ratio)=>[cx+r*ratio*Math.cos(angle(i)), cy+r*ratio*Math.sin(angle(i))];
-  let h='<defs><filter id="glow2p"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+  let h=`<defs><filter id="glow2-${p}"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
   [.33,.66,1].forEach(ratio=>{
-    const ps=ATTRS.map((_,i)=>pt(i, ratio).join(',')).join(' ');
-    h+='<polygon points="'+ps+'" fill="none" stroke="rgba(200,220,240,.12)" stroke-width="1"/>';
+    const ps=attrs.map((_,i)=>pt(i, ratio).join(',')).join(' ');
+    h+=`<polygon points="${ps}" fill="none" stroke="rgba(200,220,240,.12)" stroke-width="1"/>`;
   });
-  ATTRS.forEach((_, i)=>{
+  attrs.forEach((_, i)=>{
     const [x,y]=pt(i, 1);
-    h+='<line x1="'+cx+'" y1="'+cy+'" x2="'+x+'" y2="'+y+'" stroke="rgba(200,220,240,.12)" stroke-width="1"/>';
+    h+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(200,220,240,.12)" stroke-width="1"/>`;
   });
   const vps=vals.map((v, i)=>pt(i, Math.min(v/mv, 1)).join(',')).join(' ');
-  h+='<polygon points="'+vps+'" fill="rgba(0,200,255,.1)" stroke="rgba(0,200,255,.75)" stroke-width="1.5" filter="url(#glow2p)"/>';
-  ATTRS.forEach((attr, i)=>{
-    const [x,y]=pt(i, 1.28);
-    h+='<text x="'+x+'" y="'+y+'" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,monospace" font-size="10" fill="'+ATTR_COLOR[attr]+'" letter-spacing="1" style="cursor:pointer;" onclick="openSubAttrPrefix(\''+p+'\',\''+attr+'\')">'+attr+'</text>';
+  h+=`<polygon points="${vps}" fill="rgba(0,200,255,.1)" stroke="rgba(0,200,255,.75)" stroke-width="1.5" filter="url(#glow2-${p})"/>`;
+  attrs.forEach((attr, i)=>{
+    const [x,y]=pt(i, 1.32);
+    const color=ATTR_COLOR[attr]||'#fff';
+    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    h+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,Noto Sans TC,monospace" font-size="10" fill="${color}" style="cursor:pointer;" onclick="openSubAttrPrefix('${p}','${attr}')">${label}</text>`;
   });
   svg.innerHTML=h;
 }

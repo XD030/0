@@ -199,59 +199,59 @@ const MATERIAL_REGISTRY = [
  * stat 字串格式 "ATTR +N",由 character.js / battle.js 用 regex 解析(/([A-Z]+)\s*\+(\d+)/)
  */
 const WEAPON_REGISTRY = [
-  {key:'iron_sword',        name:'鐵劍',     rarity:'common', weaponType:'sword1', baseDur:8, maxDur:10, baseEnhance:0, basePrice:300,  stat:'STR +3',  source:['market'],         sellable:true},
-  {key:'steel_sword',       name:'精鋼劍',   rarity:'rare',   weaponType:'sword1', baseDur:6, maxDur:8,  baseEnhance:2, basePrice:1200, stat:'STR +6',  source:['market','shop'],  sellable:true},
-  {key:'iron_dagger',       name:'鐵匕首',   rarity:'common', weaponType:'dagger', baseDur:9, maxDur:10, baseEnhance:0, basePrice:250,  stat:'AGI +3',  source:['market'],         sellable:true},
-  {key:'dark_blade',        name:'暗黑刃',   rarity:'epic',   weaponType:'tachi',  baseDur:4, maxDur:6,  baseEnhance:4, basePrice:5000, stat:'STR +10', source:['market','shop'],  sellable:true},
-  {key:'iron_spear',        name:'鐵槍',     rarity:'common', weaponType:'spear',  baseDur:7, maxDur:10, baseEnhance:0, basePrice:280,  stat:'DEX +2',  source:['market'],         sellable:true},
+  {key:'iron_sword',        name:'鐵劍',     rarity:'common', weaponType:'sword1', baseDur:8, maxDur:10, baseEnhance:0, basePrice:300,  stat:'',  source:['market'],         sellable:true},
+  {key:'steel_sword',       name:'精鋼劍',   rarity:'rare',   weaponType:'sword1', baseDur:6, maxDur:8,  baseEnhance:2, basePrice:1200, stat:'',  source:['market','shop'],  sellable:true},
+  {key:'iron_dagger',       name:'鐵匕首',   rarity:'common', weaponType:'dagger', baseDur:9, maxDur:10, baseEnhance:0, basePrice:250,  stat:'',  source:['market'],         sellable:true},
+  {key:'dark_blade',        name:'暗黑刃',   rarity:'epic',   weaponType:'tachi',  baseDur:4, maxDur:6,  baseEnhance:4, basePrice:5000, stat:'', source:['market','shop'],  sellable:true},
+  {key:'iron_spear',        name:'鐵槍',     rarity:'common', weaponType:'spear',  baseDur:7, maxDur:10, baseEnhance:0, basePrice:280,  stat:'',  source:['market'],         sellable:true},
   // ── shop 低階武器(便宜版,跟 market 同名但不同數值)──
-  {key:'cheap_iron_sword',  name:'鐵劍',     rarity:'common', weaponType:'sword1', baseDur:6, maxDur:6,  baseEnhance:0, basePrice:150,  stat:'STR +1',  source:['shop'],           sellable:true},
-  {key:'short_dagger',      name:'短刀',     rarity:'common', weaponType:'dagger', baseDur:6, maxDur:6,  baseEnhance:0, basePrice:130,  stat:'AGI +1',  source:['shop'],           sellable:true},
+  {key:'cheap_iron_sword',  name:'鐵劍',     rarity:'common', weaponType:'sword1', baseDur:6, maxDur:6,  baseEnhance:0, basePrice:150,  stat:'',  source:['shop'],           sellable:true},
+  {key:'short_dagger',      name:'短刀',     rarity:'common', weaponType:'dagger', baseDur:6, maxDur:6,  baseEnhance:0, basePrice:130,  stat:'',  source:['shop'],           sellable:true},
   // ── state.js 預設 bag 的武器(不在任何商店販售;Phase D migration 把 dagger1 → shadow_dagger)──
-  {key:'shadow_dagger',     name:'暗影匕首', rarity:'rare',   weaponType:'dagger', baseDur:5, maxDur:8,  baseEnhance:1, basePrice:1200, stat:'AGI +5',  source:['state_default'],  sellable:true},
+  {key:'shadow_dagger',     name:'暗影匕首', rarity:'rare',   weaponType:'dagger', baseDur:5, maxDur:8,  baseEnhance:1, basePrice:1200, stat:'',  source:['state_default'],  sellable:true},
   // ── Rapier 細劍(AGI 系,輕、易斷)──
-  {key:'wooden_rapier',     name:'木細劍',   rarity:'common',    weaponType:'rapier',     baseDur:6,  maxDur:8,  baseEnhance:0, basePrice:200,   stat:'AGI +2',  source:['market'],         sellable:true},
-  {key:'iron_rapier',       name:'鐵細劍',   rarity:'uncommon',  weaponType:'rapier',     baseDur:7,  maxDur:10, baseEnhance:1, basePrice:500,   stat:'AGI +4',  source:['market'],         sellable:true},
-  {key:'silver_rapier',     name:'銀細劍',   rarity:'rare',      weaponType:'rapier',     baseDur:5,  maxDur:8,  baseEnhance:2, basePrice:1300,  stat:'AGI +7',  source:['market'],         sellable:true},
-  {key:'phantom_rapier',    name:'幻影細劍', rarity:'epic',      weaponType:'rapier',     baseDur:4,  maxDur:6,  baseEnhance:4, basePrice:4500,  stat:'AGI +12', source:['market','shop'],  sellable:true},
-  {key:'wind_thorn',        name:'風之刺',   rarity:'legendary', weaponType:'rapier',     baseDur:3,  maxDur:5,  baseEnhance:6, basePrice:12000, stat:'AGI +20', source:[],                 sellable:true},
+  {key:'wooden_rapier',     name:'木細劍',   rarity:'common',    weaponType:'rapier',     baseDur:6,  maxDur:8,  baseEnhance:0, basePrice:200,   stat:'',  source:['market'],         sellable:true},
+  {key:'iron_rapier',       name:'鐵細劍',   rarity:'uncommon',  weaponType:'rapier',     baseDur:7,  maxDur:10, baseEnhance:1, basePrice:500,   stat:'',  source:['market'],         sellable:true},
+  {key:'silver_rapier',     name:'銀細劍',   rarity:'rare',      weaponType:'rapier',     baseDur:5,  maxDur:8,  baseEnhance:2, basePrice:1300,  stat:'',  source:['market'],         sellable:true},
+  {key:'phantom_rapier',    name:'幻影細劍', rarity:'epic',      weaponType:'rapier',     baseDur:4,  maxDur:6,  baseEnhance:4, basePrice:4500,  stat:'', source:['market','shop'],  sellable:true},
+  {key:'wind_thorn',        name:'風之刺',   rarity:'legendary', weaponType:'rapier',     baseDur:3,  maxDur:5,  baseEnhance:6, basePrice:12000, stat:'', source:[],                 sellable:true},
   // ── Greatsword 大劍(STR 強,雙手)──
-  {key:'iron_greatsword',   name:'鐵大劍',   rarity:'common',    weaponType:'greatsword', baseDur:8,  maxDur:10, baseEnhance:0, basePrice:400,   stat:'STR +5',  source:['market'],         sellable:true},
-  {key:'steel_greatsword',  name:'精鋼大劍', rarity:'uncommon',  weaponType:'greatsword', baseDur:7,  maxDur:10, baseEnhance:1, basePrice:900,   stat:'STR +8',  source:['market'],         sellable:true},
-  {key:'flamberge',         name:'焰紋大劍', rarity:'rare',      weaponType:'greatsword', baseDur:6,  maxDur:8,  baseEnhance:2, basePrice:2200,  stat:'STR +13', source:['market'],         sellable:true},
-  {key:'dragon_slayer',     name:'屠龍大劍', rarity:'epic',      weaponType:'greatsword', baseDur:5,  maxDur:8,  baseEnhance:4, basePrice:6500,  stat:'STR +20', source:['market','shop'],  sellable:true},
-  {key:'world_breaker',     name:'破世大劍', rarity:'legendary', weaponType:'greatsword', baseDur:4,  maxDur:7,  baseEnhance:6, basePrice:18000, stat:'STR +32', source:[],                 sellable:true},
+  {key:'iron_greatsword',   name:'鐵大劍',   rarity:'common',    weaponType:'greatsword', baseDur:8,  maxDur:10, baseEnhance:0, basePrice:400,   stat:'',  source:['market'],         sellable:true},
+  {key:'steel_greatsword',  name:'精鋼大劍', rarity:'uncommon',  weaponType:'greatsword', baseDur:7,  maxDur:10, baseEnhance:1, basePrice:900,   stat:'',  source:['market'],         sellable:true},
+  {key:'flamberge',         name:'焰紋大劍', rarity:'rare',      weaponType:'greatsword', baseDur:6,  maxDur:8,  baseEnhance:2, basePrice:2200,  stat:'', source:['market'],         sellable:true},
+  {key:'dragon_slayer',     name:'屠龍大劍', rarity:'epic',      weaponType:'greatsword', baseDur:5,  maxDur:8,  baseEnhance:4, basePrice:6500,  stat:'', source:['market','shop'],  sellable:true},
+  {key:'world_breaker',     name:'破世大劍', rarity:'legendary', weaponType:'greatsword', baseDur:4,  maxDur:7,  baseEnhance:6, basePrice:18000, stat:'', source:[],                 sellable:true},
   // ── Mace 單手錘(STR 中,鈍器、高耐久)──
-  {key:'wooden_mace',       name:'木錘',     rarity:'common',    weaponType:'mace',       baseDur:10, maxDur:12, baseEnhance:0, basePrice:220,   stat:'STR +2',  source:['market'],         sellable:true},
-  {key:'iron_mace',         name:'鐵錘',     rarity:'uncommon',  weaponType:'mace',       baseDur:9,  maxDur:12, baseEnhance:1, basePrice:480,   stat:'STR +4',  source:['market'],         sellable:true},
-  {key:'morning_star',      name:'晨星錘',   rarity:'rare',      weaponType:'mace',       baseDur:8,  maxDur:12, baseEnhance:2, basePrice:1100,  stat:'STR +7',  source:['market'],         sellable:true},
-  {key:'crusher',           name:'粉碎者',   rarity:'epic',      weaponType:'mace',       baseDur:7,  maxDur:10, baseEnhance:4, basePrice:3800,  stat:'STR +11', source:['market','shop'],  sellable:true},
-  {key:'judgment_hammer',   name:'審判之鎚', rarity:'legendary', weaponType:'mace',       baseDur:6,  maxDur:10, baseEnhance:6, basePrice:11000, stat:'STR +18', source:[],                 sellable:true},
+  {key:'wooden_mace',       name:'木錘',     rarity:'common',    weaponType:'mace',       baseDur:10, maxDur:12, baseEnhance:0, basePrice:220,   stat:'',  source:['market'],         sellable:true},
+  {key:'iron_mace',         name:'鐵錘',     rarity:'uncommon',  weaponType:'mace',       baseDur:9,  maxDur:12, baseEnhance:1, basePrice:480,   stat:'',  source:['market'],         sellable:true},
+  {key:'morning_star',      name:'晨星錘',   rarity:'rare',      weaponType:'mace',       baseDur:8,  maxDur:12, baseEnhance:2, basePrice:1100,  stat:'',  source:['market'],         sellable:true},
+  {key:'crusher',           name:'粉碎者',   rarity:'epic',      weaponType:'mace',       baseDur:7,  maxDur:10, baseEnhance:4, basePrice:3800,  stat:'', source:['market','shop'],  sellable:true},
+  {key:'judgment_hammer',   name:'審判之鎚', rarity:'legendary', weaponType:'mace',       baseDur:6,  maxDur:10, baseEnhance:6, basePrice:11000, stat:'', source:[],                 sellable:true},
   // ── Axe 雙手斧(STR 極高,爆發、易斷)──
-  {key:'stone_axe',         name:'石斧',     rarity:'common',    weaponType:'axe',        baseDur:6,  maxDur:8,  baseEnhance:0, basePrice:300,   stat:'STR +4',  source:['market'],         sellable:true},
-  {key:'iron_axe',          name:'鐵斧',     rarity:'uncommon',  weaponType:'axe',        baseDur:7,  maxDur:10, baseEnhance:1, basePrice:700,   stat:'STR +7',  source:['market'],         sellable:true},
-  {key:'battle_axe',        name:'戰斧',     rarity:'rare',      weaponType:'axe',        baseDur:6,  maxDur:9,  baseEnhance:2, basePrice:1900,  stat:'STR +11', source:['market'],         sellable:true},
-  {key:'berserker_axe',     name:'狂戰士斧', rarity:'epic',      weaponType:'axe',        baseDur:5,  maxDur:7,  baseEnhance:4, basePrice:5800,  stat:'STR +18', source:['market','shop'],  sellable:true},
-  {key:'world_cleaver',     name:'裂世斧',   rarity:'legendary', weaponType:'axe',        baseDur:4,  maxDur:6,  baseEnhance:6, basePrice:16000, stat:'STR +28', source:[],                 sellable:true},
+  {key:'stone_axe',         name:'石斧',     rarity:'common',    weaponType:'axe',        baseDur:6,  maxDur:8,  baseEnhance:0, basePrice:300,   stat:'',  source:['market'],         sellable:true},
+  {key:'iron_axe',          name:'鐵斧',     rarity:'uncommon',  weaponType:'axe',        baseDur:7,  maxDur:10, baseEnhance:1, basePrice:700,   stat:'',  source:['market'],         sellable:true},
+  {key:'battle_axe',        name:'戰斧',     rarity:'rare',      weaponType:'axe',        baseDur:6,  maxDur:9,  baseEnhance:2, basePrice:1900,  stat:'', source:['market'],         sellable:true},
+  {key:'berserker_axe',     name:'狂戰士斧', rarity:'epic',      weaponType:'axe',        baseDur:5,  maxDur:7,  baseEnhance:4, basePrice:5800,  stat:'', source:['market','shop'],  sellable:true},
+  {key:'world_cleaver',     name:'裂世斧',   rarity:'legendary', weaponType:'axe',        baseDur:4,  maxDur:6,  baseEnhance:6, basePrice:16000, stat:'', source:[],                 sellable:true},
   // ── Shield 盾牌(VIT 系,副手、最高耐久)──
-  {key:'wooden_shield',     name:'木盾',     rarity:'common',    weaponType:'shield',     baseDur:10, maxDur:12, baseEnhance:0, basePrice:180,   stat:'VIT +3',  source:['market'],         sellable:true},
-  {key:'iron_shield',       name:'鐵盾',     rarity:'uncommon',  weaponType:'shield',     baseDur:12, maxDur:15, baseEnhance:1, basePrice:450,   stat:'VIT +5',  source:['market'],         sellable:true},
-  {key:'tower_shield',      name:'塔盾',     rarity:'rare',      weaponType:'shield',     baseDur:11, maxDur:15, baseEnhance:2, basePrice:1200,  stat:'VIT +9',  source:['market'],         sellable:true},
-  {key:'aegis',             name:'神盾',     rarity:'epic',      weaponType:'shield',     baseDur:10, maxDur:14, baseEnhance:4, basePrice:4200,  stat:'VIT +15', source:['market','shop'],  sellable:true},
-  {key:'world_guardian',    name:'守世盾',   rarity:'legendary', weaponType:'shield',     baseDur:9,  maxDur:13, baseEnhance:6, basePrice:13500, stat:'VIT +25', source:[],                 sellable:true},
+  {key:'wooden_shield',     name:'木盾',     rarity:'common',    weaponType:'shield',     baseDur:10, maxDur:12, baseEnhance:0, basePrice:180,   stat:'',  source:['market'],         sellable:true},
+  {key:'iron_shield',       name:'鐵盾',     rarity:'uncommon',  weaponType:'shield',     baseDur:12, maxDur:15, baseEnhance:1, basePrice:450,   stat:'',  source:['market'],         sellable:true},
+  {key:'tower_shield',      name:'塔盾',     rarity:'rare',      weaponType:'shield',     baseDur:11, maxDur:15, baseEnhance:2, basePrice:1200,  stat:'',  source:['market'],         sellable:true},
+  {key:'aegis',             name:'神盾',     rarity:'epic',      weaponType:'shield',     baseDur:10, maxDur:14, baseEnhance:4, basePrice:4200,  stat:'', source:['market','shop'],  sellable:true},
+  {key:'world_guardian',    name:'守世盾',   rarity:'legendary', weaponType:'shield',     baseDur:9,  maxDur:13, baseEnhance:6, basePrice:13500, stat:'', source:[],                 sellable:true},
 ];
 
 
 /* ════════════════ 防具 Definition ════════════════ */
 const ARMOR_REGISTRY = [
-  {key:'iron_helmet',  name:'鐵頭盔',   rarity:'common', armorType:'helmet', baseDur:8, maxDur:10, baseEnhance:0, basePrice:200,  stat:'VIT +2', source:['market'],        sellable:true},
-  {key:'steel_chest',  name:'精鋼胸甲', rarity:'rare',   armorType:'chest',  baseDur:5, maxDur:8,  baseEnhance:3, basePrice:800,  stat:'VIT +5', source:['market','shop'], sellable:true},
-  {key:'leather_pants',name:'皮革褲',   rarity:'common', armorType:'pants',  baseDur:9, maxDur:10, baseEnhance:0, basePrice:180,  stat:'AGI +2', source:['market'],        sellable:true},
-  {key:'iron_boots',   name:'鐵靴',     rarity:'common', armorType:'boots',  baseDur:7, maxDur:10, baseEnhance:1, basePrice:160,  stat:'AGI +1', source:['market'],        sellable:true},
-  {key:'dragon_ring',  name:'龍骨戒指', rarity:'epic',   armorType:'acc',    baseDur:3, maxDur:6,  baseEnhance:5, basePrice:3000, stat:'LUK +6', source:['market','shop'], sellable:true},
+  {key:'iron_helmet',  name:'鐵頭盔',   rarity:'common', armorType:'helmet', baseDur:8, maxDur:10, baseEnhance:0, basePrice:200,  stat:'', source:['market'],        sellable:true},
+  {key:'steel_chest',  name:'精鋼胸甲', rarity:'rare',   armorType:'chest',  baseDur:5, maxDur:8,  baseEnhance:3, basePrice:800,  stat:'', source:['market','shop'], sellable:true},
+  {key:'leather_pants',name:'皮革褲',   rarity:'common', armorType:'pants',  baseDur:9, maxDur:10, baseEnhance:0, basePrice:180,  stat:'', source:['market'],        sellable:true},
+  {key:'iron_boots',   name:'鐵靴',     rarity:'common', armorType:'boots',  baseDur:7, maxDur:10, baseEnhance:1, basePrice:160,  stat:'', source:['market'],        sellable:true},
+  {key:'dragon_ring',  name:'龍骨戒指', rarity:'epic',   armorType:'acc',    baseDur:3, maxDur:6,  baseEnhance:5, basePrice:3000, stat:'', source:['market','shop'], sellable:true},
   // ── shop 低階防具 ──
-  {key:'leather_armor',name:'皮甲',     rarity:'common', armorType:'chest',  baseDur:6, maxDur:6,  baseEnhance:0, basePrice:120,  stat:'VIT +1', source:['shop'],          sellable:true},
-  {key:'light_boots',  name:'輕步靴',   rarity:'common', armorType:'boots',  baseDur:6, maxDur:6,  baseEnhance:0, basePrice:100,  stat:'AGI +1', source:['shop'],          sellable:true},
+  {key:'leather_armor',name:'皮甲',     rarity:'common', armorType:'chest',  baseDur:6, maxDur:6,  baseEnhance:0, basePrice:120,  stat:'', source:['shop'],          sellable:true},
+  {key:'light_boots',  name:'輕步靴',   rarity:'common', armorType:'boots',  baseDur:6, maxDur:6,  baseEnhance:0, basePrice:100,  stat:'', source:['shop'],          sellable:true},
 ];
 
 

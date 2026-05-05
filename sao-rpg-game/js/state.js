@@ -19,8 +19,27 @@
 const SK='wxrpg6';
 const DATA_VER=4;
 
-const ATTRS=['STR','VIT','DEX','AGI','INT','LUK'];
-const ATTR_COLOR={STR:'#ff7040',VIT:'#00c8ff',DEX:'#ffcc44',AGI:'#00ffcc',INT:'#cc88ff',LUK:'#ff88cc'};
+// ── 主屬性(12 個,中文 key)──
+// 肉體系 6:力量 / 敏捷 / 反應 / 體魄 / 技巧 / 肉體抗性
+// 精神系 6:靈力 / 理智 / 專注 / 意志 / 感知 / 親和
+// E5 之前雷達圖鎖死,屬性 row 仍依此順序顯示
+const ATTRS=['力量','敏捷','反應','體魄','技巧','肉體抗性','靈力','理智','專注','意志','感知','親和'];
+const ATTR_COLOR={
+  // 肉體系暖色
+  '力量':'#ff7040', '敏捷':'#00ffcc', '反應':'#ffcc44',
+  '體魄':'#00c8ff', '技巧':'#ffaa33', '肉體抗性':'#bb8866',
+  // 精神系冷色
+  '靈力':'#cc88ff', '理智':'#88aaff', '專注':'#44ddff',
+  '意志':'#dde8ff', '感知':'#ff88cc', '親和':'#ffaaee'
+};
+// 肉體系 / 精神系分群(E5 雷達圖切換 toggle 用,E1 暫不使用)
+const ATTRS_PHYS=['力量','敏捷','反應','體魄','技巧','肉體抗性'];
+const ATTRS_MIND=['靈力','理智','專注','意志','感知','親和'];
+
+// E1.5:屬性顯示名(只覆蓋需要縮短/改寫的 key,其他 fallback 到 attr 本身)
+// 程式內仍用「肉體抗性」當 key(不影響 migration / 衍生值公式 / 裝備字串解析)
+const ATTR_DISPLAY_NAME={'肉體抗性':'抗性'};
+
 const LIFE_ATTRS=['HUNT','GATH','MINE','CRFT','COOK'];
 const LIFE_COLOR={HUNT:'#ff6644',GATH:'#88dd44',MINE:'#aaaaaa',CRFT:'#ffaa33',COOK:'#ff88aa'};
 const LIFE_SKILL_NAME={HUNT:'狩獵',GATH:'採集',MINE:'挖礦',CRFT:'製造',COOK:'烹飪'};
@@ -71,37 +90,37 @@ const NAMING_BAD_PER_DAY  = 5;    // 每日抽壞詞數
 
 const EQUIP_OPTIONS={
   main:[
-    {name:'Iron Sword',rarity:'common',stat:'STR +3',durability:5,maxDurability:10},
-    {name:'Anneal Blade',rarity:'rare',stat:'STR +8',durability:6,maxDurability:8},
-    {name:'Elucidator',rarity:'epic',stat:'STR +15',durability:4,maxDurability:6}
+    {name:'Iron Sword',rarity:'common',stat:'',durability:5,maxDurability:10},
+    {name:'Anneal Blade',rarity:'rare',stat:'',durability:6,maxDurability:8},
+    {name:'Elucidator',rarity:'epic',stat:'',durability:4,maxDurability:6}
   ],
   off:[
-    {name:'Small Shield',rarity:'common',stat:'VIT +2',durability:6,maxDurability:8},
-    {name:'Kite Shield',rarity:'rare',stat:'VIT +6',durability:5,maxDurability:8}
+    {name:'Small Shield',rarity:'common',stat:'',durability:6,maxDurability:8},
+    {name:'Kite Shield',rarity:'rare',stat:'',durability:5,maxDurability:8}
   ],
   helmet:[
-    {name:'Iron Helm',rarity:'common',stat:'VIT +2',durability:4,maxDurability:6},
-    {name:'Steel Helm',rarity:'rare',stat:'VIT +5',durability:6,maxDurability:10}
+    {name:'Iron Helm',rarity:'common',stat:'',durability:4,maxDurability:6},
+    {name:'Steel Helm',rarity:'rare',stat:'',durability:6,maxDurability:10}
   ],
   chest:[
-    {name:'Leather Coat',rarity:'common',stat:'VIT +3',durability:3,maxDurability:8},
-    {name:'Scale Armor',rarity:'rare',stat:'VIT +7',durability:5,maxDurability:8}
+    {name:'Leather Coat',rarity:'common',stat:'',durability:3,maxDurability:8},
+    {name:'Scale Armor',rarity:'rare',stat:'',durability:5,maxDurability:8}
   ],
   pants:[
-    {name:'Leather Pants',rarity:'common',stat:'AGI +2',durability:5,maxDurability:8},
-    {name:'Iron Greaves',rarity:'rare',stat:'AGI +5',durability:2,maxDurability:8}
+    {name:'Leather Pants',rarity:'common',stat:'',durability:5,maxDurability:8},
+    {name:'Iron Greaves',rarity:'rare',stat:'',durability:2,maxDurability:8}
   ],
   boots:[
-    {name:'Leather Boots',rarity:'common',stat:'AGI +2',durability:6,maxDurability:8},
-    {name:'Wind Boots',rarity:'rare',stat:'AGI +6',durability:4,maxDurability:8}
+    {name:'Leather Boots',rarity:'common',stat:'',durability:6,maxDurability:8},
+    {name:'Wind Boots',rarity:'rare',stat:'',durability:4,maxDurability:8}
   ],
   acc1:[
-    {name:'Ring of AGI',rarity:'rare',stat:'AGI +4',durability:6,maxDurability:6},
-    {name:'Amulet of STR',rarity:'epic',stat:'STR +8',durability:3,maxDurability:6}
+    {name:'Ring of AGI',rarity:'rare',stat:'',durability:6,maxDurability:6},
+    {name:'Amulet of STR',rarity:'epic',stat:'',durability:3,maxDurability:6}
   ],
   acc2:[
-    {name:'Ring of AGI',rarity:'rare',stat:'AGI +4',durability:6,maxDurability:6},
-    {name:'Amulet of STR',rarity:'epic',stat:'STR +8',durability:5,maxDurability:6}
+    {name:'Ring of AGI',rarity:'rare',stat:'',durability:6,maxDurability:6},
+    {name:'Amulet of STR',rarity:'epic',stat:'',durability:5,maxDurability:6}
   ]
 };
 
@@ -217,7 +236,10 @@ function initState(){
   if(!s.ver||s.ver<DATA_VER){
     s={ver:DATA_VER};
   }
-  if(!s.character)s.character={name:'無名俠客',level:1,exp:0,hp:200,mp:22,STR:1,VIT:1,DEX:1,AGI:1,INT:1,LUK:1,pendingPoints:0,skillSlots:2};
+  if(!s.character){
+    s.character={name:'無名俠客',level:1,exp:0,hp:1000,mp:100,pendingPoints:0,skillSlots:2};
+    ATTRS.forEach(a=>s.character[a]=0);
+  }
   // 生活技能等級系統(獨立於戰鬥屬性)
   if(!s.lifeSkills)s.lifeSkills={};
   LIFE_ATTRS.forEach(a=>{
@@ -280,8 +302,8 @@ function initState(){
   if(!s.lastDailyDate||s.lastDailyDate!==today()){
     s.dailyTasks.forEach(t=>{t.submitted=false;t.todayValue=0;});
     s.personalTasks.forEach(t=>{t.todayDone=false;t.todayCount=0;t.todayValue=0;t.todaySubmitted=false;});
-    // maxHp 同樣來自 inline JS(將在 Phase 4 移到 character.js)
-    const mhp=maxHp(s.character.level,s.character.VIT);
+    // maxHp 已搬到 character.js;簽名改吃整個 character 物件
+    const mhp=maxHp(s.character.level,s.character);
     s.character.hp=mhp;
     s.lastDailyDate=today();
   }
@@ -304,6 +326,68 @@ function runStateMigrations(){
   if(!s.lifeSkills)s.lifeSkills={};
   if(!s.lifeSkills.GATH)s.lifeSkills.GATH={lv:1,exp:0};
   LIFE_ATTRS.forEach(a=>s.character[a]=0);
+
+  // ── E1:6 主屬性 → 12 主屬性 schema 遷移(attrSchemaV 旗標,不 bump DATA_VER)──
+  // 舊存檔的 STR/VIT/DEX/AGI/INT/LUK 點數全部退回 pendingPoints,12 個新中文 key 補 0。
+  // 玩家進入後可在屬性分配頁重配。
+  const ATTR_SCHEMA_V = 1;
+  if(s.character && (s.character.attrSchemaV||0) < ATTR_SCHEMA_V){
+    const OLD_KEYS = ['STR','VIT','DEX','AGI','INT','LUK'];
+    let refund = 0;
+    OLD_KEYS.forEach(k=>{
+      if(typeof s.character[k] === 'number'){
+        refund += s.character[k];
+        delete s.character[k];
+      }
+    });
+    s.character.pendingPoints = (s.character.pendingPoints||0) + refund;
+    ATTRS.forEach(a=>{
+      if(typeof s.character[a] !== 'number') s.character[a]=0;
+    });
+    s.character.attrSchemaV = ATTR_SCHEMA_V;
+    if(refund > 0) console.log('[E1 migration] 舊屬性退回 '+refund+' 點到 pendingPoints');
+  }
+
+  // ── E2-B:bag/equipment instance 的舊 stat 字串清空(attrStringSchemaV 旗標)──
+  // E2-A 已清空 def 的 stat,但舊存檔的 instance 仍帶 'STR +N' 等字串。
+  // 這裡一次性清空,跟 def 對齊。命名系統(applyNamingToWeapon)現階段不動,
+  // 之後重做時會一起改 — 同步等戰鬥公式(E4)接通才有正確設計依據。
+  const ATTR_STRING_SCHEMA_V = 1;
+  if((s.attrStringSchemaV||0) < ATTR_STRING_SCHEMA_V){
+    let cleared = 0;
+    // 1. bag.weapons / bag.armors / bag.pendingWeapons
+    if(s.bag){
+      ['weapons','armors','pendingWeapons'].forEach(k=>{
+        const arr = s.bag[k];
+        if(Array.isArray(arr)){
+          arr.forEach(item=>{
+            if(item && typeof item.stat === 'string' && item.stat !== ''){
+              item.stat = '';
+              cleared++;
+            }
+          });
+        }
+      });
+    }
+    // 2. equipment 8 個槽位
+    if(s.equipment){
+      Object.keys(s.equipment).forEach(slot=>{
+        const it = s.equipment[slot];
+        if(it && typeof it.stat === 'string' && it.stat !== ''){
+          it.stat = '';
+          cleared++;
+        }
+      });
+    }
+    s.attrStringSchemaV = ATTR_STRING_SCHEMA_V;
+    if(cleared > 0) console.log('[E2-B migration] 清空 '+cleared+' 條舊 stat 字串');
+  }
+
+  // 防呆:即使旗標已置位,12 個 key 仍補齊(避免半途中斷的存檔)
+  ATTRS.forEach(a=>{
+    if(typeof s.character[a] !== 'number') s.character[a]=0;
+  });
+
   // 裝備格去重:同一個 uid 不該同時在多個槽(舊版多買 Date.now() 碰撞或舊 bug 殘留)
   if(s.equipment){
     const seenUids=new Set();
@@ -398,10 +482,13 @@ function runStateMigrations(){
     s.essences = Array(ESSENCE_MAX).fill(null).map((_, i)=> old[i] || null);
   }
 
-  // ── MP 欄位 migration:舊存檔補上,以當前 INT 算 maxMp 並設為滿(舊角色補裝)──
-  // 公式內聯避免依賴 character.js 的 maxMp(載入順序 state.js 先);改公式記得兩處同步
+  // ── MP 欄位 migration:舊存檔補上,以當前精神系屬性算 maxMp(E1)──
+  // 公式 §7.2:基礎 MP × (1 + 靈力×0.011 + 理智×0.004 + 專注×0.004 + 親和×0.002)
+  // 公式內聯避免依賴 character.js(載入順序 state.js 先);改公式記得兩處同步
   if(s.character && (typeof s.character.mp !== 'number' || s.character.mp < 0)){
-    s.character.mp = 20 + (s.character.INT||1)*2;
+    const c=s.character;
+    const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
+    s.character.mp = Math.round(100 * mul);
   }
 
   // ── Task A:確保製造佇列 / 待命名區欄位存在(不 bump DATA_VER)──

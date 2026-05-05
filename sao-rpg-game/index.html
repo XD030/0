@@ -686,57 +686,60 @@
     </div>
   </div>
 
-  <!-- 戰鬥頁（覆蓋在整個畫面） -->
+  <!-- 戰鬥頁（覆蓋在整個畫面）— E4-1a 重排 -->
   <div id="adv-battle-map" style="position:absolute;inset:0;z-index:101;display:none;flex-direction:column;background:#03080f;">
+
+    <!-- 場景 + 敵人 grid + 玩家立繪 -->
     <div class="adv-scene" onclick="if(selectedCard){selectedCard=null;hideConfirm();renderCards();}">
       <div class="scene-floor"></div>
       <div class="scene-ground"></div>
-      <div class="player-zone" id="player-zone"><img class="player-sprite" src="img/player_idle.png" alt="PLAYER" onerror="this.outerHTML='&lt;div class=\'player-sprite-placeholder\'&gt;PLAYER&lt;/div&gt;'"></div>
-      <div class="enemy-zone" id="enemy-zone"><div class="enemy-frame"><div class="enemy-sprite-placeholder">ENEMY</div></div></div>
-      <div class="scene-vs">VS</div>
+
+      <!-- 敵人 2x2 grid:row-back（後排）+ row-front（前排） -->
+      <div class="enemy-stage" id="enemy-stage">
+        <div class="enemy-row-label rowlabel-back">後排<span class="rl-sub">距離較遠</span></div>
+        <div class="enemy-row enemy-row-back" id="enemy-row-back">
+          <div class="enemy-slot" id="enemy-slot-0"></div>
+          <div class="enemy-slot" id="enemy-slot-1"></div>
+        </div>
+        <div class="enemy-row-label rowlabel-front">前排<span class="rl-sub">距離較近</span></div>
+        <div class="enemy-row enemy-row-front" id="enemy-row-front">
+          <div class="enemy-slot" id="enemy-slot-2"></div>
+          <div class="enemy-slot" id="enemy-slot-3"></div>
+        </div>
+      </div>
+
+      <!-- 戰鬥結果 -->
       <div class="battle-result" id="battle-result">
         <div class="result-title win" id="result-title">VICTORY</div>
         <div class="result-detail" id="result-detail"></div>
         <button class="result-btn" onclick="exitBattle()">// CONTINUE</button>
       </div>
     </div>
+
+    <!-- 玩家狀態列（頭貼 + HP/MP + buff/debuff slots） -->
     <div class="battle-panel" onclick="event.stopPropagation()">
-      <div class="bp-left">
+      <div class="bp-portrait" id="bp-portrait"></div>
+      <div class="bp-player-stats">
         <div class="bp-hp-num" id="bp-p-hp"><span class="bp-hp-cur" id="bp-p-cur">—</span><span class="bp-hp-max" id="bp-p-max"></span></div>
         <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="bp-p-bar" style="width:100%;background:linear-gradient(90deg,#cc2233,#ff4455);"></div></div>
         <div class="bp-mp-num" id="bp-p-mp"><span class="bp-mp-cur" id="bp-p-mp-cur">—</span><span class="bp-mp-max" id="bp-p-mp-max"></span></div>
         <div class="bp-hp-bar-wrap"><div class="bp-hp-bar bp-mp-bar" id="bp-p-mp-bar" style="width:100%;"></div></div>
-        <div class="bp-stagger-wrap"><div class="bp-stagger-bar" id="bp-p-stagger" style="width:0%;"></div></div>
-        <div class="bp-status-slots">
-          <div class="status-slot-wrap"><div class="status-slot empty" id="p-buff-slot">▲</div></div>
-          <div class="status-slot-wrap"><div class="status-slot empty" id="p-debuff-slot">▼</div></div>
-        </div>
-      </div>
-      <div class="bp-center"><div class="bp-turn-badge" id="bp-turn">1</div></div>
-      <div class="bp-right">
-        <div class="bp-hp-num" style="justify-content:flex-end;" id="bp-e-hp"><span class="bp-hp-cur" id="bp-e-cur">—</span><span class="bp-hp-max" id="bp-e-max"></span></div>
-        <div class="bp-hp-bar-wrap"><div class="bp-hp-bar" id="bp-e-bar" style="width:100%;background:linear-gradient(90deg,#6633cc,#9944ff);"></div></div>
-        <div class="bp-stagger-wrap"><div class="bp-stagger-bar" id="bp-e-stagger" style="width:0%;"></div></div>
-        <div class="bp-status-slots" style="justify-content:flex-end;">
-          <div class="status-slot-wrap"><div class="status-slot empty" id="e-buff-slot">▲</div></div>
-          <div class="status-slot-wrap"><div class="status-slot empty" id="e-debuff-slot">▼</div></div>
-        </div>
+        <!-- buff/debuff Minecraft style icon row（空時隱藏，動態 render） -->
+        <div class="bp-status-icons" id="p-status-icons"></div>
       </div>
     </div>
-    <div class="battle-bottom" id="battle-bottom" onclick="if(selectedCard){selectedCard=null;hideConfirm();renderCards();}">
-      <div class="battle-overlay" id="battle-overlay">
-        <button class="confirm-btn" id="confirm-btn" onclick="event.stopPropagation();confirmCard()">ATTACK</button>
-      </div>
-      <div class="card-row-wrap" onclick="event.stopPropagation()">
-        <div class="row-icon"><div style="width:20px;height:20px;border:1px dashed rgba(255,255,255,.2);"></div></div>
+
+    <!-- 卡牌區（單排 4 卡 + 手勢翻頁 + dots + 僵直條） -->
+    <div class="battle-bottom" id="battle-bottom" onclick="if(selectedCard){selectedCard=null;renderCards();}">
+      <div class="card-page-wrap" onclick="event.stopPropagation()">
         <div class="cards-row" id="cards-row-1"></div>
       </div>
-      <div class="card-row-wrap" onclick="event.stopPropagation()">
-        <div class="row-icon"><div style="width:20px;height:20px;border:1px dashed rgba(255,255,255,.2);"></div></div>
-        <div class="cards-row" id="cards-row-2"></div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;padding:4px 12px 6px;">
-        <button onclick="event.stopPropagation();fleeBattle()" style="font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.3);background:none;border:1px solid rgba(255,255,255,.1);padding:4px 12px;border-radius:2px;cursor:pointer;">FLEE</button>
+      <div class="card-page-indicator" id="card-page-indicator" onclick="event.stopPropagation()"></div>
+      <!-- 僵直條（全寬，在卡牌列下方） -->
+      <div class="bp-stagger-wrap-bottom"><div class="bp-stagger-bar" id="bp-p-stagger" style="width:0%;"></div></div>
+      <!-- 底部按鈕列：只剩 FLEE 右下 -->
+      <div class="bp-action-row">
+        <button class="flee-btn" onclick="event.stopPropagation();fleeBattle()">FLEE</button>
       </div>
     </div>
   </div>
@@ -828,6 +831,11 @@
         <div><div class="bar-row"><span class="bar-label">EXP</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--cyan)" id="r-exp">0/5</span></div><div class="bar-track"><div class="exp-bar" id="r-exp-bar" style="width:0%"></div></div></div>
       </div>
       <div class="pts-banner" id="r-pts-banner"><span class="pts-big" id="r-pts-num">0</span><span>點可分配</span></div>
+      <div class="gear-tabs" id="r-attr-tabs" style="margin:6px 0 8px;">
+        <div class="gear-tab attr-tab active" id="r-attr-tab-phys" onclick="setAttrTab('phys')">肉體</div>
+        <div class="gear-tab attr-tab" id="r-attr-tab-mind" onclick="setAttrTab('mind')">精神</div>
+        <div class="gear-tab attr-tab" id="r-attr-tab-elem" onclick="setAttrTab('elem')">元素</div>
+      </div>
       <div class="radar-section">
         <div style="position:relative;width:150px;height:150px;flex-shrink:0;"><svg id="r-radar-svg" width="150" height="150" viewBox="0 0 136 136" style="display:block;"></svg></div>
         <div class="r-attr-list" id="r-attr-list"></div>
@@ -914,6 +922,7 @@
 
 <script src="js/storage.js"></script>
 <script src="js/state.js"></script>
+<script src="js/derived.js"></script>
 <script src="js/wordlist.js"></script>
 <script src="js/items.js"></script>
 <script src="js/utils.js"></script>
