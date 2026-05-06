@@ -8,7 +8,7 @@
  *   4. 樓層系統 TOTAL_FLOORS / getFloorData / getMaxUnlockedFloor /
  *               renderFloorSelect / enterFloor / exitFloorMap / onBossCleared
  *   5. 圖示字典 IMG
- *   6. 戰鬥狀態 mockChar / BATTLE_DEFAULT_ENEMY / ENEMY_ATTACKS_CARD /
+ *   6. 戰鬥狀態 mockChar / ENEMY_DEFS / ENEMY_ATTACKS_CARD /
  *               CARD_DECK / STATUS_DESC / battle / autoMode / selectedCard / tooltipTimer
  *   7. 狀態系統函式 hasStatus / addStatus / removeStatus / tickStatuses
  *   8. 戰鬥計算 calcIncomingDmg / tryAct / onHit / calcMaxStagger / addStagger
@@ -288,35 +288,106 @@ let mockChar = (()=>{
 })();
 
 // ── 敵人 ──
-// E4-2:多敵人模板(name 由 ENEMY_NAME_POOL 隨機選)
-// E4-4:加 lv / physDef / magicDef / 攻擊元素 / 型態相性 / 9 元素相性
-const BATTLE_DEFAULT_ENEMY={
-  name:'巡邏士兵', maxHp:180, atk:18, imgKey:'enemy_knight',
-  pattern:['slash','heavy','guard','slash','slash'], patternIdx:0,
-  _maxStagger:90,
-  // E4-4 新欄位
-  lv: 1,
-  physDef: 20,
-  magicDef: 15,
-  // 攻擊元素(承受時玩家用對應元素抵抗減傷)
-  attackElement: null,  // null = 物理無屬性
-  // 對玩家 3 種型態的相性(>1 易傷,<1 抗性)
-  bluntAffinity: 1.0,
-  slashAffinity: 1.0,
-  pierceAffinity: 1.0,
-  // 對 9 元素的相性
-  elementAffinity: {
-    fire:1.0, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
-    rock:1.0, holy:1.0, chaos:1.0, dark:1.0,
+// E5-1F:每隻敵人有專屬 def(取代舊 BATTLE_DEFAULT_ENEMY 單模板)
+// 欄位:lv / maxHp / physDef / magicDef / attackElement / pattern(行動序列招 key)/
+//      bluntAffinity / slashAffinity / pierceAffinity(對玩家 3 型態的相性,>1 弱 <1 抗)/
+//      elementAffinity(對 9 元素的相性)/ imgKey / _maxStagger
+// 招的 dmg 寫在 ENEMY_ATTACKS_CARD,不在 def 裡。enemy.atk 已廢棄。
+const ENEMY_DEFS = {
+  antler_rabbit: {
+    name:'鹿角兔', lv:1, maxHp:100, physDef:5, magicDef:0,
+    attackElement: null,
+    pattern: ['rabbit_normal', 'rabbit_charge'],
+    bluntAffinity: 0.7,   // 抗擊打
+    slashAffinity: 1.3,   // 弱切割
+    pierceAffinity: 1.3,  // 弱貫穿
+    elementAffinity: {
+      fire:1.5, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
+      rock:1.0, holy:1.0, chaos:1.0, dark:1.0,
+    },
+    imgKey: 'enemy_rabbit', _maxStagger: 60,
+  },
+  goblin: {
+    name:'哥布林', lv:1, maxHp:120, physDef:3, magicDef:3,
+    attackElement: null,
+    pattern: ['goblin_normal'],
+    bluntAffinity: 1.0, slashAffinity: 1.0, pierceAffinity: 1.0,
+    elementAffinity: {
+      fire:1.0, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
+      rock:1.0, holy:1.0, chaos:1.0, dark:1.0,
+    },
+    imgKey: 'enemy_goblin', _maxStagger: 70,
+  },
+  blade_wolf: {
+    name:'刃狼', lv:2, maxHp:140, physDef:6, magicDef:0,
+    attackElement: null,
+    pattern: ['wolf_normal', 'wolf_normal', 'wolf_bite'],
+    bluntAffinity: 1.0, slashAffinity: 1.0, pierceAffinity: 1.0,
+    elementAffinity: {
+      fire:1.5, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
+      rock:1.0, holy:1.0, chaos:1.0, dark:1.0,
+    },
+    imgKey: 'enemy_wolf', _maxStagger: 80,
+  },
+  gnome: {
+    name:'地精', lv:1, maxHp:150, physDef:10, magicDef:0,
+    attackElement: 'rock',
+    pattern: ['gnome_guard', 'gnome_normal'],
+    bluntAffinity: 1.0,   // 弱貫穿擊打:擊打 1.3? — 用戶寫「貫穿/擊打」弱,所以兩者 1.3
+    slashAffinity: 0.7,   // 抗切割
+    pierceAffinity: 1.3,
+    elementAffinity: {
+      fire:1.0, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
+      rock:0.5, holy:1.0, chaos:1.0, dark:1.0,
+    },
+    imgKey: 'enemy_gnome', _maxStagger: 90,
+  },
+  ghoul: {
+    name:'食屍鬼', lv:1, maxHp:130, physDef:4, magicDef:0,
+    attackElement: null,
+    pattern: ['idle', 'ghoul_normal'],
+    bluntAffinity: 1.3, slashAffinity: 1.3,
+    pierceAffinity: 0.7,  // 抗貫穿
+    elementAffinity: {
+      fire:1.5, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
+      rock:1.0, holy:1.0, chaos:1.0, dark:0.5,  // 抗黑暗
+    },
+    imgKey: 'enemy_ghoul', _maxStagger: 75,
+  },
+  // 1F boss
+  mist_giant: {
+    name:'迷霧巨人', lv:5, maxHp:1000, physDef:25, magicDef:15,
+    attackElement: null,
+    pattern: ['giant_stomp', 'giant_regen', 'giant_normal', 'idle'],
+    bluntAffinity: 1.3, slashAffinity: 1.3, pierceAffinity: 1.3,  // 全弱型態
+    elementAffinity: {
+      fire:1.0, water:1.0, ice:1.0, thunder:1.0, wind:1.0,
+      rock:1.0, holy:1.0, chaos:1.0, dark:1.0,
+    },
+    imgKey: 'enemy_giant', _maxStagger: 200, isBoss: true,
   },
 };
 
-// E4-2:名字池(隨機抽,可重複)
-const ENEMY_NAME_POOL = ['巡邏士兵', '魔狼', '崩坍者', '獨眼巨', '守衛裝置', '崩口虫'];
+// 1F 樓層配置:雜兵全隨機從這池抽,boss 固定迷霧巨人
+const FLOOR_1_MOB_KEYS = ['antler_rabbit', 'goblin', 'blade_wolf', 'gnome', 'ghoul'];
+const FLOOR_1_BOSS_KEY = 'mist_giant';
 
-// E4-2:樓層難度 → 敵人數
+// 抽敵人 def helper
+function _pickEnemyDef(floor, isBoss){
+  if(isBoss){
+    // 1F boss(2F+ 之後加 BOSS_KEYS_BY_FLOOR)
+    return ENEMY_DEFS[FLOOR_1_BOSS_KEY];
+  }
+  // 1F 雜兵全隨機(2F+ 之後加 MOB_KEYS_BY_FLOOR)
+  const pool = FLOOR_1_MOB_KEYS;
+  const key = pool[Math.floor(Math.random() * pool.length)];
+  return ENEMY_DEFS[key];
+}
+
+// E5-1F:1F 固定 1 隻;2F+ 規則暫保留(等之後決定)
 function _enemyCountForFloor(floor, isBoss){
   if(isBoss) return 1;
+  if(floor === 1) return 1;                                    // 1F 固定 1
   if(floor <= 3) return 1 + Math.floor(Math.random() * 2);     // 1-2
   if(floor <= 7) return 2 + Math.floor(Math.random() * 2);     // 2-3
   if(floor <= 9) return 3 + Math.floor(Math.random() * 2);     // 3-4
@@ -335,11 +406,45 @@ function _slotsForCount(n){
   if(n === 3) return [2, 3, 0];
   return [2, 3, 0, 1];
 }
-const ENEMY_ATTACKS_CARD={
-  slash:    {name:'劍擊',   dmgMul:1.0},
-  heavy:    {name:'重擊',   dmgMul:1.8, isHeavy:true},
-  guard:    {name:'防禦',   dmgMul:0,   isGuard:true},
-  curse_all:{name:'萬禍降臨', dmgMul:0, isCurseAll:true},
+// E5-1F 招式 schema:
+//   dmg:           直接寫死的傷害數值(取代舊 dmgMul × enemy.atk)
+//   isIdle:        跳過行動(「無」)
+//   isGuard:       自上 PRT 一回合(防禦)
+//   isCurseAll:    保留(舊 final boss 用,1F 沒用到)
+//   healRatio:     回復 maxHp × ratio(boss 重組)
+//   selfDamageRatio: 自損 maxHp × ratio(boss 踐踏反噬)
+//   aoe:           全體(目前單人戰意義同單體,2F+ 加同伴會生效)
+//   attackElement: 覆蓋 def 的 attackElement(若需要單招特殊元素)
+//   applyStatus / applyChance / applyDuration: 機率對玩家上 status
+const ENEMY_ATTACKS_CARD = {
+  // 共用
+  idle:            {name:'警戒', dmg:0, isIdle:true},
+
+  // 鹿角兔
+  rabbit_normal:   {name:'普攻', dmg:4},
+  rabbit_charge:   {name:'猛衝', dmg:8},
+
+  // 哥布林
+  goblin_normal:   {name:'普攻', dmg:6},
+
+  // 刃狼
+  wolf_normal:     {name:'普攻', dmg:5},
+  wolf_bite:       {name:'撕咬', dmg:3, applyStatus:'BLD', applyChance:0.3, applyDuration:3},
+
+  // 地精
+  gnome_normal:    {name:'普攻', dmg:3},  // 元素由 def.attackElement='rock' 決定
+  gnome_guard:     {name:'防禦', dmg:0, isGuard:true},
+
+  // 食屍鬼
+  ghoul_normal:    {name:'普攻', dmg:7},
+
+  // 迷霧巨人(1F boss)
+  giant_stomp:     {name:'踐踏', dmg:10, aoe:true, selfDamageRatio:0.2},
+  giant_regen:     {name:'重組', dmg:0, healRatio:0.05},
+  giant_normal:    {name:'普攻', dmg:16},
+
+  // 舊招(保留以防 final boss curse_all 還在用,可選擇是否清)
+  curse_all:       {name:'萬禍降臨', dmg:0, isCurseAll:true},
 };
 
 // ════════════════════════════════════════════════════════════════════════
@@ -1285,7 +1390,9 @@ function executeEnemyTurn(){
   if(_checkAllEnemiesDead()){ endBattle(true); return; }
 }
 
-// E4-2:單隻敵人單次行動(從原 executeEnemyTurn 主體拆出來,不跑 tickStatuses)
+// E5-1F:單隻敵人單次行動
+// 招式 schema 從 ENEMY_ATTACKS_CARD 取(dmg / isIdle / isGuard / isCurseAll /
+//   healRatio / selfDamageRatio / aoe / attackElement / applyStatus+applyChance+applyDuration)
 function _executeOneEnemyAction(enemy){
   if(!battle) return;
   const {player} = battle;
@@ -1299,33 +1406,78 @@ function _executeOneEnemyAction(enemy){
     return;
   }
   const atkKey = enemy.pattern[enemy.patternIdx % enemy.pattern.length];
-  const atk = ENEMY_ATTACKS_CARD[atkKey] || {name:atkKey, dmgMul:1.0};
+  const atk = ENEMY_ATTACKS_CARD[atkKey] || {name:atkKey, dmg:0};
   enemy.patternIdx++;
+
+  // idle:不行動
+  if(atk.isIdle){
+    battleLog(`${enemy.name} ${atk.name}`, 'system');
+    return;
+  }
+  // 防禦
   if(atk.isGuard){
     addStatus(enemy, 'PRT', 1);
-    battleLog(`${enemy.name} 防禦`, 'system');
+    battleLog(`${enemy.name} ${atk.name}`, 'system');
     return;
   }
+  // 萬禍(舊 final boss,保留)
   if(atk.isCurseAll){
     ['BLD','PSN','BRN','FRZ','PAR','STN','SLP','CRS'].forEach(id=>addStatus(player, id, 3));
-    battleLog(`💀 ${enemy.name} 萬禍降臨！所有詛咒降臨！`, 'warn');
+    battleLog(`💀 ${enemy.name} ${atk.name}！所有詛咒降臨！`, 'warn');
     return;
   }
-  // E4-4:敵人攻擊公式(§27)
-  let rawDmg = enemy.atk * (atk.dmgMul || 1);
-  if(hasStatus(player,'PRT')){ rawDmg *= 0.6; removeStatus(player,'PRT'); }
-  if(hasStatus(player,'PRT_full')){
-    rawDmg = 0;
-    removeStatus(player,'PRT_full');
+
+  // 治療(boss 重組:回復 maxHp × healRatio)
+  // 純治療招(dmg=0)結算後直接 return;若同時有 dmg 會繼續往下打
+  if(atk.healRatio){
+    const heal = Math.floor((enemy.maxHp || 0) * atk.healRatio);
+    enemy.hp = Math.min(enemy.maxHp || enemy.hp, enemy.hp + heal);
+    battleLog(`${enemy.name} ${atk.name} → 回復 ${heal} HP`, 'system');
+    if(!atk.dmg){
+      return;
+    }
   }
-  // 走玩家防護 + 元素抵抗 + 等級差
-  let dmg = rawDmg > 0 ? _calcEnemyDmg(rawDmg, enemy, player) : 0;
-  dmg = calcIncomingDmg(player, dmg);
-  onHit(player);
-  player.hp = Math.max(0, player.hp - dmg);
-  addStagger(player, dmg);
-  spawnDmg('player', dmg, false, 'enemy');
-  battleLog(`${enemy.name} ${atk.name} → 玩家 -${dmg} HP`, 'enemy');
+
+  // 攻擊段(dmg > 0 才走)
+  if((atk.dmg || 0) > 0){
+    let rawDmg = atk.dmg;
+    if(hasStatus(player,'PRT')){ rawDmg *= 0.6; removeStatus(player,'PRT'); }
+    if(hasStatus(player,'PRT_full')){
+      rawDmg = 0;
+      removeStatus(player,'PRT_full');
+    }
+
+    // E4-4:走玩家防護 + 元素抵抗 + 等級差
+    // 招若覆寫 attackElement 就用招的,否則用 def 的
+    const savedElem = enemy.attackElement;
+    if(atk.attackElement !== undefined){
+      enemy.attackElement = atk.attackElement;
+    }
+    let dmg = rawDmg > 0 ? _calcEnemyDmg(rawDmg, enemy, player) : 0;
+    enemy.attackElement = savedElem;
+
+    dmg = calcIncomingDmg(player, dmg);
+    onHit(player);
+    player.hp = Math.max(0, player.hp - dmg);
+    addStagger(player, dmg);
+    spawnDmg('player', dmg, false, 'enemy');
+    const aoeTag = atk.aoe ? '【全體】' : '';
+    battleLog(`${enemy.name} ${aoeTag}${atk.name} → 玩家 -${dmg} HP`, 'enemy');
+
+    // applyStatus:機率對玩家上狀態(撕咬 30% BLD)
+    if(atk.applyStatus && Math.random() < (atk.applyChance != null ? atk.applyChance : 1)){
+      addStatus(player, atk.applyStatus, atk.applyDuration || 3);
+      battleLog(`💥 玩家 ${atk.applyStatus}!`, 'warn');
+    }
+  }
+
+  // 自損(踐踏:自損 maxHp × ratio)
+  if(atk.selfDamageRatio){
+    const selfDmg = Math.floor((enemy.maxHp || 0) * atk.selfDamageRatio);
+    enemy.hp = Math.max(0, enemy.hp - selfDmg);
+    battleLog(`${enemy.name} 反噬 -${selfDmg} HP`, 'system');
+    // 自損可能讓 boss 死,_markEnemyDead 由外層 tickStatuses 後檢查接手
+  }
 }
 
 function autoAct(){
@@ -1739,20 +1891,17 @@ function enterNodeDirect(node, colIdx, side){
 
   if(node.kind==='battle'||node.kind==='elite'||node.kind==='boss'){
     hideMap();
-    const isBoss=node.kind==='boss';
-    const isElite=node.kind==='elite';
-    const currentFloor=initState().currentFloor||1;
-    const isFinalBoss=isBoss&&(currentFloor>=100||currentFloor===1);
-    const enemyData={
-      name: node.name,
-      maxHp: isBoss?400:isElite?260:180,
-      atk:   isBoss?32:isElite?24:18,
-      pattern: isFinalBoss?['slash','heavy','curse_all','slash','heavy','slash','guard','curse_all']:
-               isBoss?['slash','heavy','slash','guard','heavy']:
-               isElite?['slash','heavy','slash','guard']:
-               ['slash','heavy','guard','slash'],
-      _maxStagger: isBoss?150:isElite?110:80,
-      isBoss,
+    const isBoss = node.kind==='boss';
+    const currentFloor = initState().currentFloor || 1;
+    // E5-1F:從 ENEMY_DEFS 取 def(_pickEnemyDef 內含樓層 → 池對應)
+    const def = _pickEnemyDef(currentFloor, isBoss);
+    if(!def){
+      console.error('[battle] 找不到敵人 def, floor=', currentFloor, 'isBoss=', isBoss);
+      return;
+    }
+    const enemyData = {
+      ...def,
+      isBoss: !!def.isBoss,
     };
     startBattleWith(enemyData);
   } else if(node.kind==='rest'){
@@ -1794,18 +1943,17 @@ function startBattleWith(enemyData){
   const slots = _slotsForCount(enemyCount);
   // 生成 enemies array
   const enemies = slots.map((slotIdx, i)=>{
-    // 隨機抽名字(boss 用 enemyData 原名;一般敵人用 NAME_POOL)
-    const name = isBoss ? enemyData.name : ENEMY_NAME_POOL[Math.floor(Math.random() * ENEMY_NAME_POOL.length)];
+    // E5-1F:enemyData 已是 ENEMY_DEFS[key] 的 clone,直接用 def.name
+    // 2F+ 多隻分布要每隻獨立抽 key 時,改在這層實作(目前 1F 一格 1 隻)
     return {
       ...enemyData,
-      name,
       hp: enemyData.maxHp,
       statuses: [],
       patternIdx: 0,
       stagger: 0,
       stunned: false,
       slotIdx,           // 0-3,UI 渲染哪格
-      _enemyId: i,       // 內部 id(避免重名混淆)
+      _enemyId: i,       // 內部 id
       dead: false,
     };
   });
