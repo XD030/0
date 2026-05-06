@@ -23,18 +23,25 @@
 
 /* ════════════════ 1. 等級 / EXP / HP 公式 ════════════════ */
 function expReq(lv){return lv*lv*5;}
-// E1:HP/MP 公式換成新表 §7.1 §7.2,簽名改吃整個 character 物件。
-// 等級暫時不參與公式(新表把成長放在屬性配點上;若之後要加等級加成,在這裡補)。
-// 注意:有效值換算(§0)是 E3 才接的,E1 階段直接用原始值,差距不大。
-// state.js 的 mp migration 內聯了 maxMp 同樣公式,改公式時兩處要同步。
+// E1 → E5-HP-v2:HP/MP 公式 = (100 + lv×50) / (10 + lv×5) base × 屬性 mul,緩成長
+// lv1: HP 100/150 base → 屬性 mul ~1.0~2.0 → 對應 1F 雜兵 100-150 HP base 區
+// lv10: HP 600 base → 對應 10F boss
+// lv100: HP 5100 base → 對應 100F final boss
+// MP 同步,1/10 比例
+// 同步點(改公式時全部要對齊):
+//   - state.js L240 init hp/mp(寫死 lv1+屬性0 結果)
+//   - state.js mp migration / hp clamp / mp clamp(內聯公式)
+//   - battle.js mockChar IIFE / _buildBattleChar(已重構成函數呼叫,不再內聯)
 function maxHp(lv, c){
   const mul = 1 + (c['體魄']||0)*0.011 + (c['意志']||0)*0.004 + (c['肉體抗性']||0)*0.004 + (c['力量']||0)*0.002;
-  return Math.round(1000 * mul);
+  const base = 100 + (lv || 1) * 50;
+  return Math.round(base * mul);
 }
 
 function maxMp(lv, c){
   const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
-  return Math.round(100 * mul);
+  const base = 10 + (lv || 1) * 5;
+  return Math.round(base * mul);
 }
 function calcSlots(lv){return SLOT_UNLOCKS.filter(l=>lv>=l).length;}
 function nextSlot(lv){return SLOT_UNLOCKS.find(l=>l>lv)||null;}

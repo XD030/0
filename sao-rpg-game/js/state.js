@@ -237,7 +237,9 @@ function initState(){
     s={ver:DATA_VER};
   }
   if(!s.character){
-    s.character={name:'無名俠客',level:1,exp:0,hp:1000,mp:100,pendingPoints:0,skillSlots:2};
+    // E5-HP-v2:lv1 + 屬性 0 → maxHp = round((100+50)*1) = 150 / maxMp = round((10+5)*1) = 15
+    // 改公式時 character.js maxHp/maxMp + 下方 mp/hp clamp migration 都要同步
+    s.character={name:'無名俠客',level:1,exp:0,hp:150,mp:15,pendingPoints:0,skillSlots:2};
     ATTRS.forEach(a=>s.character[a]=0);
   }
   // 生活技能等級系統(獨立於戰鬥屬性)
@@ -482,13 +484,34 @@ function runStateMigrations(){
     s.essences = Array(ESSENCE_MAX).fill(null).map((_, i)=> old[i] || null);
   }
 
-  // ── MP 欄位 migration:舊存檔補上,以當前精神系屬性算 maxMp(E1)──
-  // 公式 §7.2:基礎 MP × (1 + 靈力×0.011 + 理智×0.004 + 專注×0.004 + 親和×0.002)
-  // 公式內聯避免依賴 character.js(載入順序 state.js 先);改公式記得兩處同步
+  // ── MP 欄位 migration:舊存檔補上,以當前精神系屬性算 maxMp(E1 → E5-HP-v2)──
+  // 公式 §7.2 + lv 縮放:(10 + lv×5) × (1 + 靈力×0.011 + 理智×0.004 + 專注×0.004 + 親和×0.002)
+  // 公式內聯避免依賴 character.js(載入順序 state.js 先);改公式記得 character.js / battle.js / 上方 init 都要同步
   if(s.character && (typeof s.character.mp !== 'number' || s.character.mp < 0)){
     const c=s.character;
+    const lv = c.level || 1;
     const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
-    s.character.mp = Math.round(100 * mul);
+    s.character.mp = Math.round((10 + lv * 5) * mul);
+  }
+
+  // ── HP 欄位 clamp:舊存檔 hp 用舊基底 1000,改公式後可能 > 新 maxHp 破表,clamp(E5-HP-v2)──
+  // 用 typeof 檢查避免 §10 雷(hp=0 是死亡狀態,不該觸發 fallback)
+  if(s.character && typeof s.character.hp === 'number'){
+    const c=s.character;
+    const lv = c.level || 1;
+    const mul = 1 + (c['體魄']||0)*0.011 + (c['意志']||0)*0.004 + (c['肉體抗性']||0)*0.004 + (c['力量']||0)*0.002;
+    const newMaxHp = Math.round((100 + lv * 50) * mul);
+    if(s.character.hp > newMaxHp) s.character.hp = newMaxHp;
+  }
+
+  // ── MP 欄位 clamp:舊存檔 mp 用舊基底 100,改公式後新基底 10+lv×5,可能破表(E5-HP-v2)──
+  // 同上 §10:用 typeof 檢查不用 ||,mp=0 是合法狀態不該觸發 fallback
+  if(s.character && typeof s.character.mp === 'number'){
+    const c=s.character;
+    const lv = c.level || 1;
+    const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
+    const newMaxMp = Math.round((10 + lv * 5) * mul);
+    if(s.character.mp > newMaxMp) s.character.mp = newMaxMp;
   }
 
   // ── Task A:確保製造佇列 / 待命名區欄位存在(不 bump DATA_VER)──

@@ -275,13 +275,15 @@ let mockChar = (()=>{
     const c = s.character || {};
     const battleC = { level: c.level || 1, hp: 0 };
     ATTRS.forEach(a=> battleC[a] = c[a] || 0);
-    battleC.maxHp = Math.round(1000 * hpMul(battleC));
-    battleC.maxMp = Math.round(100 * mpMul(battleC));
+    // E5-HP-v2:呼叫 character.js 的 maxHp/maxMp,消除內聯公式重複
+    battleC.maxHp = maxHp(battleC.level, battleC);
+    battleC.maxMp = maxMp(battleC.level, battleC);
     battleC.hp = c.hp || battleC.maxHp;
     battleC.mp = c.mp || 0;
     return battleC;
   }catch{
-    const fb = { level:1, hp:1000, maxHp:1000, mp:100, maxMp:100 };
+    // E5-HP-v2:fallback 對應 lv1 + 屬性 0 → maxHp 150 / maxMp 15
+    const fb = { level:1, hp:150, maxHp:150, mp:15, maxMp:15 };
     ATTRS.forEach(a=> fb[a] = 0);
     return fb;
   }
@@ -472,9 +474,9 @@ function _buildBattleChar(s){
   const bonus = _calcEquipBonus(s);
   const battleC = { level: c.level, hp: c.hp, mp: c.mp || 0 };
   ATTRS.forEach(a=> battleC[a] = (c[a] || 0) + (bonus[a] || 0));
-  // 計算 maxHp / maxMp(用 derived 套有效值)
-  battleC.maxHp = Math.round(1000 * hpMul(battleC));
-  battleC.maxMp = Math.round(100 * mpMul(battleC));
+  // E5-HP-v2:呼叫 character.js 的 maxHp/maxMp,消除內聯公式重複
+  battleC.maxHp = maxHp(battleC.level, battleC);
+  battleC.maxMp = maxMp(battleC.level, battleC);
   return battleC;
 }
 
@@ -548,7 +550,10 @@ function _calcPhysDmg(card, player, enemy){
   const type = _cardDamageType(card);
   const baseByType = type === 'blunt' ? 105 : type === 'pierce' ? 98 : 100;
   const cardMul = (card.dmgMul || card.mul || 1);
+  // E5-HP-v2:lv scale 對齊 HP base 成長(lv1=0.1x, lv10=1.0x, lv100=10x)
+  const lvScale = (player.level || 1) * 0.1;
   const dmg = baseByType
+    * lvScale
     * physPower(player)
     * _typeMastery(player, type)
     * cardMul
@@ -580,7 +585,10 @@ function _calcMagicDmg(card, player, enemy){
       case 'dark': elemSenseBonus = darkSense(player); break;
     }
   }
+  // E5-HP-v2:lv scale 對齊 HP base 成長(lv1=0.1x, lv10=1.0x, lv100=10x)
+  const lvScale = (player.level || 1) * 0.1;
   const dmg = baseByType
+    * lvScale
     * magicPower(player)
     * _typeMastery(player, type)
     * cardMul
