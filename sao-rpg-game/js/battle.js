@@ -1672,7 +1672,7 @@ const MAP_FLOORS = [
     { top:{ id:9, kind:'chest',  name:'寶箱', rarity:'rare' }, bottom:{ id:10, kind:'elite', name:'暗影刺客' } },
     { top:{ id:11, kind:'battle', name:'石像鬼' },     bottom:{ id:12, kind:'battle', name:'食人魔' } },
     { type:'merge', node:{ id:13, kind:'shop', name:'行商' } },
-    { type:'merge', node:{ id:14, kind:'boss', name:'迷失騎士', isBoss:true } },
+    { type:'merge', node:{ id:14, kind:'boss', name:'迷霧巨人', isBoss:true } },
   ],
 ];
 
