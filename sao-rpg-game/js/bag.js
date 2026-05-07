@@ -72,7 +72,7 @@ function bagSetFilter(filter, sub, el){
 // ── 背包物品操作 ──
 function confirmUseItem(key, name, heal){
   const s=initState();
-  const mhp=maxHp(s.character.level,s.character.VIT);
+  const mhp=maxHp(s.character);
   const curHp=s.character.hp;
   const afterHp=Math.min(mhp,curHp+heal);
   const got=afterHp-curHp;
@@ -106,7 +106,7 @@ function useItem(key){
   if(!s.bag.items[key]||s.bag.items[key]<=0){showToast('// 數量不足');return;}
   const heal=(def.effect?.kind==='heal')?(def.effect.amount||0):0;
   if(heal>0){
-    const mhp=maxHp(s.character.level,s.character.VIT);
+    const mhp=maxHp(s.character);
     const before=s.character.hp;
     s.character.hp=Math.min(mhp,s.character.hp+heal);
     const got=s.character.hp-before;

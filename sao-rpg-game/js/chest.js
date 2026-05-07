@@ -298,7 +298,7 @@ function showChestResult(score){
 }
 
 function triggerTrap(showResult=false){
-  const dmg=Math.round(maxHp(mockChar.level,mockChar.VIT)*0.15);
+  const dmg=Math.round(maxHp(mockChar)*0.15);
   mockChar.hp=Math.max(1, mockChar.hp-dmg);
   updateMapHp();
   if(showResult){

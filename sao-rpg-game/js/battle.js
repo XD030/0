@@ -1714,7 +1714,7 @@ function hideMap(){
 }
 
 function updateMapHp(){
-  const c=mockChar, mhp=maxHp(c.level,c), pct=Math.max(0,c.hp/mhp*100);
+  const c=mockChar, mhp=maxHp(c), pct=Math.max(0,c.hp/mhp*100);
   const num=document.getElementById('map-hp-num');
   const bar=document.getElementById('map-hp-bar');
   const cur=document.getElementById('map-hp-cur');
@@ -1917,7 +1917,7 @@ function enterNodeDirect(node, colIdx, side){
     };
     startBattleWith(enemyData);
   } else if(node.kind==='rest'){
-    const mhp=maxHp(mockChar.level,mockChar);
+    const mhp=maxHp(mockChar);
     mockChar.hp=Math.min(mhp, mockChar.hp+Math.round(mhp*0.3));
     showToast('// 💤 回復 30% HP');
     renderMap(); updateMapHp(); renderNextChoices();

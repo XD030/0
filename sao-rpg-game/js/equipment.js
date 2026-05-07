@@ -227,6 +227,7 @@ function openSkillDD(idx, cb){
     // 卸下不歸零熟練度,直接卸下
     const s2=initState();
     delete s2.skills[idx];
+    syncActiveSkills(s2);  // E6-1:同步 mirror
     save(s2);
     (cb||renderStatus)();
   };
@@ -247,6 +248,7 @@ function openSkillDD(idx, cb){
       // 替換不歸零熟練度,直接換
       const s2=initState();
       s2.skills[idx]=sk.key;
+      syncActiveSkills(s2);  // E6-1:同步 mirror
       save(s2);
       (cb||renderStatus)();
     };

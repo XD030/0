@@ -140,6 +140,22 @@ function nextEssenceLv(level){
   return cur * ESSENCE_UNLOCK_STEP;
 }
 
+/* ── E6-1 dual-write helper:s.skills(真實來源)→ s.activeSkills(mirror)──
+ * E6 戰鬥重做要 s.activeSkills 槽位,但既有 battle.js / character.js / equipment.js
+ * 大量讀 s.skills(13 處)。E6-1 採 dual-write 過渡:s.skills 保留原邏輯,
+ * 每次寫入後呼叫此 helper 把 0..3 槽 mirror 到 s.activeSkills。
+ * E6-2 戰鬥重寫時,讀取端切到 s.activeSkills,再砍 s.skills + 此 helper。
+ *
+ * 呼叫點:initState 結尾、runStateMigrations(skillSlotSchemaV)、
+ *        equipment.js 的 2 個 s.skills 寫入點(裝 / 卸技能)。
+ */
+function syncActiveSkills(s){
+  if(!s.activeSkills) s.activeSkills = {0:null, 1:null, 2:null, 3:null};
+  for(let i=0; i<4; i++){
+    s.activeSkills[i] = (s.skills && s.skills[i]) || null;
+  }
+}
+
 /* ── 技能定義 ──
  * move: { id, name, type:'atk'|'def'|'spc', hits, mul, desc, profReq }
  * mul: STR 倍率(atk)或 回復倍率(def)
@@ -270,6 +286,10 @@ function initState(){
   if(!s.character.gold) s.character.gold=500;
   if(!s.equipment)s.equipment={main:null,off:null,helmet:null,chest:null,pants:null,boots:null,acc1:null,acc2:null};
   if(!s.skills)s.skills={};
+  // E6-1:被動技槽預留(內容 E6-3 才填);activeSkills 是 s.skills 的 mirror,
+  // 結尾 syncActiveSkills 會建立。passiveSkills 純預留,目前無寫入點。
+  if(!s.passiveSkills) s.passiveSkills = {0:null, 1:null, 2:null, 3:null};
+  if(typeof s.mainTargetIdx !== 'number') s.mainTargetIdx = 0;
   if(!s.skillProf)s.skillProf={};
   if(!s.unlockedMoves)s.unlockedMoves={};
   // 精髓系統(Phase 1):20 格陣列,長度不對時重建(保留有效格資料)
@@ -308,11 +328,13 @@ function initState(){
     s.dailyTasks.forEach(t=>{t.submitted=false;t.todayValue=0;});
     s.personalTasks.forEach(t=>{t.todayDone=false;t.todayCount=0;t.todayValue=0;t.todaySubmitted=false;});
     // maxHp 已搬到 character.js;簽名改吃整個 character 物件
-    const mhp=maxHp(s.character.level,s.character);
+    const mhp=maxHp(s.character);
     s.character.hp=mhp;
     s.lastDailyDate=today();
   }
   s.timedTasks.forEach(t=>{if(t.status==='active'&&t.deadline<today()){t.status='failed';s.character[t.attr]=Math.max(0,(s.character[t.attr]||1)-1);}});
+  // E6-1:確保 s.activeSkills mirror s.skills(initState 路徑)
+  syncActiveSkills(s);
   save(s);return s;
 }
 
@@ -531,5 +553,17 @@ function runStateMigrations(){
   if(!s.mineDiscovered) s.mineDiscovered={};
   if(typeof s.mineCurrentFloor !== 'number') s.mineCurrentFloor=null;
 
+  // ── E6-1:技能槽 schema 拆分(skillSlotSchemaV 旗標,不 bump DATA_VER)──
+  // s.skills(動態 dict)→ 預留 s.activeSkills / s.passiveSkills 兩個固定 4 格槽位。
+  // 過渡期 dual-write:s.skills 保留作真實來源,activeSkills 由 syncActiveSkills mirror。
+  // E6-2 戰鬥重寫切換讀取端後,E6-3 砍 s.skills + 此 migration。
+  const SKILL_SLOT_SCHEMA_V = 1;
+  if((s.skillSlotSchemaV||0) < SKILL_SLOT_SCHEMA_V){
+    if(!s.passiveSkills) s.passiveSkills = {0:null, 1:null, 2:null, 3:null};
+    if(typeof s.mainTargetIdx !== 'number') s.mainTargetIdx = 0;
+    syncActiveSkills(s);
+    s.skillSlotSchemaV = SKILL_SLOT_SCHEMA_V;
+    console.log('[E6-1 migration] skill slot schema v1: activeSkills mirror 建立, passiveSkills/mainTargetIdx 預留');
+  }
   save(s);
 }
