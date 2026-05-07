@@ -20,7 +20,7 @@ There is **no test suite, no linter, no build**. The user cannot run a browser i
    python3 -c "
    from pathlib import Path
    parts = [Path(f).read_text() for f in [
-     'js/storage.js','js/state.js','js/wordlist.js','js/items.js','js/utils.js','js/character.js',
+     'js/storage.js','js/state.js','js/derived.js','js/wordlist.js','js/items.js','js/utils.js','js/character.js',
      'js/equipment.js','js/battle.js','js/quest.js','js/skills.js','js/lifeskill.js',
      'js/bag.js','js/market.js','js/chest.js','js/shop.js',
      'js/panel.js','js/ui.js','js/main.js']]
@@ -32,11 +32,11 @@ There is **no test suite, no linter, no build**. The user cannot run a browser i
 
 ## Architecture in 30 seconds
 
-- 18 JS files + 7 CSS files, all loaded as plain `<script src=...>` in global scope.
+- 19 JS files + 7 CSS files, all loaded as plain `<script src=...>` in global scope.
 - No imports/exports. Functions and `const`s declared at top level are visible across files.
 - Load order is in `index.html` and **must not be reordered casually**:
   ```
-  storage → state → wordlist → items → utils → character → equipment → battle →
+  storage → state → derived → wordlist → items → utils → character → equipment → battle →
     quest → skills → lifeskill → bag → market → chest → shop → panel → ui → main
   ```
 - State flow: `const s = initState(); s.x = ...; save(s); renderXxx();`
@@ -48,7 +48,8 @@ There is **no test suite, no linter, no build**. The user cannot run a browser i
 | File | Owns |
 |---|---|
 | `storage.js` | `load()` / `save(s)`. **Only file touching `localStorage` directly.** |
-| `state.js` | All global constants (`SK`, `DATA_VER`, `ATTRS`, `LIFE_ATTRS`, `SLOT_UNLOCKS`, `EQUIP_OPTIONS`, `SKILL_DEFS`, `SKILL_OPTIONS`, `HUNT_MAX_MS`, **製造平衡 `CRFT_*`、命名加成 `NAMING_*`**), `initState()`(預設 `bag.pendingWeapons` / `crftQueue` / `craftNamingRule`), `runStateMigrations()`(內含 Phase D 的 itemSchemaV migration:dark_crystal2 rename、舊 instance.key 重映射、stat 補齊)。**`EQUIP_OPTIONS` 仍保留**(equipment.js `migrateEquipVal` 對 `src:'static'` 的舊存檔還在用)。 |
+| `state.js` | All global constants (`SK`, `DATA_VER`, `ATTRS`(8 中文,E0 起), `LIFE_ATTRS`, `SLOT_UNLOCKS`, `EQUIP_OPTIONS`, `SKILL_DEFS`(E6-3 加雙軌 schema), `SKILL_OPTIONS`, `HUNT_MAX_MS`, **製造平衡 `CRFT_*`、命名加成 `NAMING_*`**), `initState()`(預設 `bag.pendingWeapons` / `crftQueue` / `craftNamingRule` / `activeSkills` / `passiveSkills` / `mainTargetIdx`), `syncActiveSkills(s)`(E6-1 dual-write helper:`s.skills` mirror 到 `s.activeSkills`), `runStateMigrations()`(5 個子 schema migration:`itemSchemaV` Phase D / `attrStringSchemaV` E2-B / `attrSchemaV2` E0 / `skillSlotSchemaV` E6-1 / `skillDefSchemaV` E6-3,**全不 bump `DATA_VER`**)。**`EQUIP_OPTIONS` 仍保留**(equipment.js `migrateEquipVal` 對 `src:'static'` 的舊存檔還在用)。 |
+| `derived.js` | E0 引入。**衍生值純函式群**(輸入 `c` character 物件,輸出數字,無副作用)。`effectiveAttr`/`eff` 有效值換算(0-60 1:1, 61-80 ×0.6, 81-100 ×0.3);40 個新衍生值依 E0 §4 公式(`maxHp` / `maxStamina` / `maxSpirit` / `actionSpeed` / `autoAttackDamage` / `hitRate` / `evasionRate` / `critRateE0` / `critDamage` / `breakDamage` / `maxBreak` / `incomingBreakTaken` / `collapseDamage` / `guardRate` / `perfectGuardRate` / `counterRate` / `counterDamage` / `counterBreak` / `comboRate` / `comboHits` / `comboDamagePerHit` / `comboStaminaGain` / `swordSkillDamage` / `swordSkillBreak` / `staminaCostMul` / `elementSkillDamage` / `auraStrength` / `spiritCostMul` / `physMitigation` / `elementMitigation` / `statusResist` / `playerPressureMod` / `gaugeDelayAmount`);`DERIVED_DEFS`(玩家面板顯示)+ `ATTR_INFLUENCES`(8 屬性 → 影響的衍生值反查)+ `fmtDerived`/`pctDerived` render helper;`ELEMENT_REACTIONS_DEF`(7 元素反應 schema,觸發引擎留 E6-2)+ `reactionScore`/`reactionPower`。**§12 27 個 stub**(`physScore`/`magicScore`/9 sense/9 resist/`penetration`/`physDef`/`magicDef`/`regenMul`/5 mastery,`critRate` dual-name)讓 battle.js E6-2 重寫前仍能跑舊邏輯,**E6-2 砍 stub** 後 `critRateE0` → `critRate`。所有 maxXxx **動態算不存欄位**(maxHp/maxStamina/maxSpirit/maxBreak),呼叫端 `maxHp(c)` 一參簽名。 |
 | `wordlist.js` | **命名加成詞庫(Task B)**。`NAMING_GOOD_WORDS`(70 個好詞,每個 `{word, tags[]}`)、`NAMING_BAD_WORDS`(24 個壞詞)、`NAMING_TAG_HINTS`(tag → zh-TW 意境描述)。每個詞 1 個中文字。命中規則嚴格逐字比對 `craftNamingRule.goodWords/badWords` 純字串列表;tag 只用於每日 hint 文字生成,不參與命中。**加減字直接編這份**,加新 tag 要同步在 `NAMING_TAG_HINTS` 加 description。本檔不依賴任何其他 module。 |
 | `items.js` | **物品 def 唯一來源**(Phase A 引入,Phase D 收斂完畢)。`RARITIES`/`RARITY_COLOR`(5 級含 legendary)/`RARITY_ORDER`、`WEAPON_TYPES`/`ARMOR_TYPES`、`MATERIAL_REGISTRY`/`WEAPON_REGISTRY`/`ARMOR_REGISTRY`/`CONSUMABLE_REGISTRY`(每個 def 含 `source:['market'\|'shop'\|...]`)、查詢函式 `getMaterialDef`/`getWeaponDef`/`getArmorDef`/`getConsumableDef`/`getWeaponType`/`getArmorType`/`getConsumableSafe`、動態 view `getMarketBuyList()`、Factory `newUid`/`makeWeaponInstance`/`makeArmorInstance`。**新增物品只動這份**——沒別的地方有 def。 |
 | `utils.js` | `today()`, `fmtTime()`, `showToast()`, `gConfirm()`, `closeDD()`, `imgOrPlaceholder()`, `hexEmpty()`, `attachDragScroll()` |
@@ -70,27 +71,46 @@ There is **no test suite, no linter, no build**. The user cannot run a browser i
 
 ```js
 {
-  character: { level, hp, exp, STR, AGI, DEX, VIT, INT, LUK,
-               HUNT, GATH, MINE, COOK, CRFT,    // life attrs (reset by runStateMigrations)
-               unspent, allocated },
+  character: {
+    name, level, hp, exp, gold,
+    // 8 主屬性(E0 起,中文 key)— 舊 12 屬性點全退到 pendingPoints
+    力量, 技巧, 敏捷, 反應, 耐力, 抗性, 精神, 感知,
+    // 雙資源 + 破勢(E0 起;maxStamina/maxSpirit/maxHp/maxBreak 動態算不存,derived.js 算)
+    stamina, spirit, break,
+    // 生活技能屬性 stub(reset by runStateMigrations,實際 lv/exp 在 s.lifeSkills)
+    HUNT, GATH, MINE, COOK, CRFT,
+    pendingPoints, skillSlots
+  },
   equipment: { main, off, helmet, chest, pants, boots, acc1, acc2 },
     // each = null OR { src:'bag'|'static', uid?, name, rarity, stat, durability, maxDurability }
-  bag: { materials:{key→qty}, weapons:[{uid,...}], armors:[{uid,...}], items:{key→qty} },
-  skills: { 0..3 → SKILL_DEFS key },
-  skillProf: { skillKey → 0..1000 },
+  bag: { materials:{key→qty}, weapons:[{uid,...}], armors:[{uid,...}], items:{key→qty}, pendingWeapons:[] },
+  skills: { 0..3 → SKILL_DEFS key },              // E6-1 dual-write 真實來源,battle.js 仍讀此
+  activeSkills: {0,1,2,3 → SKILL_DEFS key|null},  // E6-1 mirror,E6-2 切讀取後砍 skills
+  passiveSkills:{0,1,2,3 → SKILL_DEFS key|null},  // E6-1 純預留,E6-2b 接通
+  mainTargetIdx: 0..3,                             // E6-1 戰鬥目標
+  skillProf: { skillKey → 0..1000 },               // 熟練度(E6-3 後僅 sword1 實際用)
   unlockedMoves: { skillKey → [moveId, ...] },
   lifeSkills: { HUNT|GATH|MINE|COOK|CRFT → {lv, exp} },
   lifeTimers: { HUNT|GATH|CRFT → {running, startAt} },
   huntTimer: { running, startAt },
-  gold, questDefs, questLog,
-  mineStates, mineDiscovered, mineCurrentFloor, // mine per-floor state + dex
-  farm: { plots:[{seedKey, plantedAt, locked}, ...] }, // GATH 9-plot farm
-  crftLastPick: { weapon, armor, potion },  // CRFT dropdown:記住三個 tab 上次選的種類
-  mapState, // minigame state
+  questDefs, questLog,
+  mineStates, mineDiscovered, mineCurrentFloor,
+  farm: { plots:[{seedKey, plantedAt, locked}, ...] },
+  crftQueue, crftLastPick: { weapon, armor, potion }, craftNamingRule,
+  cook: { phase, photoUrl, selected, log, itemName },
+  huntHistory, completionLog, dailyTasks, personalTasks, timedTasks, lastDailyDate,
+  essences,                                        // 精髓 20 格陣列
+  mapState,
+  // ── 子 schema migration 旗標(全不 bump DATA_VER)──
+  attrSchemaV2,        // E0:12→8 屬性退點 + stamina/spirit/break + delete mp/maxMp
+  attrStringSchemaV,   // E2-B:清空 instance 舊 stat 字串
+  itemSchemaV,         // Phase D:material key rename + LEGACY_KEY_MAP + stat 補齊
+  skillSlotSchemaV,    // E6-1:syncActiveSkills mirror + passiveSkills/mainTargetIdx 預留
+  skillDefSchemaV,     // E6-3:清玩家 unlockedMoves 內 5 個被砍 move id
 }
 ```
 
-`runStateMigrations()` runs on every load to clean dropped fields, dedup equipment uids, and reset life attrs.
+`runStateMigrations()` runs on every load to clean dropped fields, dedup equipment uids, and reset life attrs. 子 schema migration 透過旗標(`attrSchemaV2` / `attrStringSchemaV` / `itemSchemaV` / `skillSlotSchemaV` / `skillDefSchemaV`)漸進演化,**不 bump `DATA_VER`** 保護玩家進度。
 
 ## Hard rules — landmines that already bit us
 
@@ -162,8 +182,12 @@ The repo started as a single 8160-line `index.html` with everything inline. Modu
   - **Phase B**:bag 寫入點(market.js / shop.js / state.js initState)全部收斂到 `make*Instance` factory。修 bug 1-1(shop 把 zh 字串寫進 weaponType)。
   - **Phase C**:讀取 / render 端切到 registry。修 bug 1-2(`statStr` 從未寫入 → equipment.js 改讀 `w.stat`,factory 從 def 帶 stat 上來)、bug 1-5(WEAPON_ICONS keys 大多對不上 → 改用 `getWeaponType().icon`)。RARITY_COLOR 三表(shop/panel/skills CRFT/skills POTION)收斂到 items.js 全域版,uncommon 藥水從黃色 fallback 改回正確綠色。
   - **Phase D**:刪除 `MARKET_ITEMS` / `CRFT_WEAPONS` / `CRFT_ARMOR_PARTS` / `CRFT_MATERIALS` / `WEAPON_ICONS` / `ARMOR_ICONS` / `PANEL_*` 5 個死碼 const。`runStateMigrations` 加 itemSchemaV migration(dark_crystal2 → shadow_crystal、10 條 LEGACY_KEY_MAP 對舊 instance.key 重映射、stat 從 def 補齊)。**不 bump DATA_VER**(避免清空玩家進度),走 itemSchemaV 旗標跳過已遷移存檔。orphan key 一律 warn 不刪。
+- **E0(屬性系統翻新)**:`derived.js` 入庫(40 衍生值 + 27 stub + ELEMENT_REACTIONS_DEF)。ATTRS 12→8(中文 key);`attrSchemaV2` migration 退舊 12 屬性點到 `pendingPoints`;雙資源 stamina/spirit + 破勢 break(maxXxx 動態算);character.js 8 邊形 radar UI;battle.js 17 點 mp→stamina 機械改名(戰鬥邏輯不動,留 E6-2)。
+- **E6-0(doc 銜接)**:純 doc。`COMBAT_REDESIGN.md` 銜接 E0,SP/MP→體力靈力,加破勢條,被動技槽改雙軌條件觸發(事件/狀態,以回合為求值單位),CARDS 11→10。
+- **E6-1(state schema additive)**:`syncActiveSkills` helper + `skillSlotSchemaV=1` migration;`s.skills` dual-write mirror 到 `s.activeSkills`(舊 schema 保留兼容);`s.passiveSkills` / `s.mainTargetIdx` 純預留。順手清光 5 處 `maxHp(level, VIT)` 兩參舊簽名(daily reset / map UI / rest / trap 真實 bug)。
+- **E6-3(SKILL_DEFS schema additive)**:6 個現存 active 系列加 `category` / `hasProf` 欄位;砍 5 個高階 moves(`heal_regen` / `heal_burst` / `poison_burst` / `poison_cloud` / `charge_full`);加 2 個新 active(`dash` / `aegis`)+ 8 個 passive 系列(雙軌 event/state schema);`skillDefSchemaV=1` migration 清玩家 `unlockedMoves` 死碼。**unarmed/parry 整系列保留**(留 E6-2b 砍,牽動 buildBattleDeck 寫死)。dash/aegis/8 passive def 在 E6-2b 接通前是死碼。
 
-Result(Task A/B/C 後): `index.html` ~920 lines, 17 JS files totalling ~7800 lines, 7 CSS files totalling ~1300 lines。
+Result(到 E6-3 為止): `index.html` ~920 lines, **19 JS files** totalling ~10800 lines, 7 CSS files totalling ~1300 lines。**戰鬥主迴圈重寫(E6-2)未開始**,SKILL_DEFS 已加 E6 雙軌 schema 但 dash/aegis/8 passive def 暫無人讀(等 E6-2b 接通)。
 
 If you spot remaining cruft (orphan IIFEs, duplicate selectors, unreferenced HTML), it's fair game to clean up — but flag it in your response, don't silently delete.
 
