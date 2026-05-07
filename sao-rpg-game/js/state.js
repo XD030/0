@@ -172,6 +172,7 @@ const SKILL_DEFS={
   },
   sword1:{
     name:'單手劍', desc:'單手劍技',
+    category:'active', hasProf:true,
     moves:[
       {id:'sword1_slash',   name:'基礎斬擊',   type:'atk', hits:1, mul:1.0,  profBonus:0.5, profReq:0,   cost:0, recover:3, desc:'基礎劍技,STR×1.0(回 3 MP)'},
       {id:'sword1_spiral',  name:'螺旋斬',     type:'atk', hits:1, mul:1.5,  profBonus:0.5, profReq:300, cost:4, desc:'STR×1.5,破防效果', debuff:'PRT_break'},
@@ -189,25 +190,96 @@ const SKILL_DEFS={
   },
   heal:{
     name:'治癒術', desc:'戰鬥中回復',
+    category:'active', hasProf:false,
     moves:[
       {id:'heal_basic',  name:'治癒',   type:'def', healMul:0.25, profBonus:0.15, profReq:0,   cost:2, desc:'回復最大HP的25%'},
-      {id:'heal_regen',  name:'再生',   type:'def', regenTurns:3, profBonus:0,    profReq:400, cost:4, desc:'持續3回合緩慢回血'},
-      {id:'heal_burst',  name:'爆發治癒',type:'def', healMul:0.5,  profBonus:0.2, profReq:800, cost:6, desc:'回復最大HP的50%'},
     ],
   },
   poison:{
     name:'毒術', desc:'毒素攻擊',
+    category:'active', hasProf:false,
     moves:[
       {id:'poison_mist',  name:'毒霧',   type:'spc', poisonTurns:4, profBonus:0, profReq:0,   cost:2, desc:'敵人中毒4回合'},
-      {id:'poison_burst', name:'毒爆',   type:'atk', hits:1, mul:0.8, poisonTurns:3, profBonus:0.4, profReq:500, cost:4, desc:'攻擊+中毒3回合'},
-      {id:'poison_cloud', name:'劇毒雲', type:'spc', poisonTurns:6, profBonus:0, profReq:900, cost:6, desc:'敵人劇毒6回合'},
     ],
   },
   charge:{
     name:'蓄力', desc:'強化下次攻擊',
+    category:'active', hasProf:false,
     moves:[
       {id:'charge_basic', name:'蓄力',   type:'spc', chargeMul:2.5, profBonus:0.5, profReq:0,   cost:2, desc:'下回合傷害×2.5'},
-      {id:'charge_full',  name:'全力蓄力',type:'spc', chargeMul:4.0, profBonus:0,   profReq:600, cost:4, desc:'下回合傷害×4.0,需跳過此回合'},
+    ],
+  },
+  // ── E6-3 active 補 2 系列 ──
+  dash:{
+    name:'衝鋒', desc:'突進敵方主目標,造成傷害並重置自身攻擊條',
+    category:'active', hasProf:false,
+    moves:[
+      {id:'dash_basic', name:'衝鋒', type:'atk', hits:1, mul:0.7, profBonus:0, cost:3, costType:'stamina', cooldown:2, desc:'物理 STR×0.7,重置自身攻擊條'},
+    ],
+  },
+  aegis:{
+    name:'護身咒', desc:'自身獲得 AEGIS buff 3 回合,期間受傷 ×0.6',
+    category:'active', hasProf:false,
+    moves:[
+      {id:'aegis_basic', name:'護身咒', type:'def', mul:0, profBonus:0, cost:4, costType:'spirit', cooldown:4, addStatus:{id:'AEGIS', dur:3}, desc:'自身 AEGIS buff 3 回合,受傷 ×0.6'},
+    ],
+  },
+
+  // ── E6-3 passive 8 系列(雙軌 schema:event / state)──
+  dispel:{
+    name:'消力', desc:'受擊時 25% 機率將該次傷害改寫為 1',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_dispel', name:'消力', triggerKind:'event', event:'ON_HIT', procChance:25, effect:{type:'rewrite', incomingDamage:1}, desc:'受擊時 25% 機率將該次傷害改寫為 1'},
+    ],
+  },
+  luck_breath:{
+    name:'運氣調息', desc:'被暴擊時 30% 機率回復受到傷害的 10%',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_luck_breath', name:'運氣調息', triggerKind:'event', event:'ON_CRIT_TAKEN', procChance:30, effect:{type:'instant', healPctOfDamage:10}, desc:'被暴擊時 30% 機率回復受到傷害的 10%'},
+    ],
+  },
+  last_stand:{
+    name:'背水', desc:'HP < 30% 時物攻 +25%',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_last_stand', name:'背水', triggerKind:'state', predicate:{hpRatioBelow:0.3}, effect:{type:'buff', atkMul:1.25}, desc:'HP < 30% 時物攻 ×1.25'},
+    ],
+  },
+  fire_warfare:{
+    name:'火戰', desc:'敵附著火元素時劍技傷害 +20%',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_fire_warfare', name:'火戰', triggerKind:'state', predicate:{enemyHasElement:'fire'}, effect:{type:'buff', swordSkillDamageMul:1.20}, desc:'敵附著火元素時劍技傷害 ×1.20'},
+    ],
+  },
+  killing_spree:{
+    name:'連殺勢', desc:'擊殺敵人時自身獲得 RAGE buff 3 回合(物攻 +30%)',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_killing_spree', name:'連殺勢', triggerKind:'event', event:'ON_KILL', effect:{type:'instant', addStatus:{id:'RAGE', dur:3}}, desc:'擊殺敵人時自身 RAGE buff 3 回合'},
+    ],
+  },
+  echo_strike:{
+    name:'餘響', desc:'攻擊命中時 20% 機率追擊一次(基礎傷害 ×0.4)',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_echo_strike', name:'餘響', triggerKind:'event', event:'ON_HIT_DEAL', procChance:20, effect:{type:'instant', extraHit:{mulOfBase:0.4}}, desc:'攻擊命中時 20% 機率追擊(基礎 ×0.4)'},
+    ],
+  },
+  mana_surge:{
+    name:'法盈', desc:'靈力 > 70% 時元素技傷害 +15%',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_mana_surge', name:'法盈', triggerKind:'state', predicate:{spiritRatioAbove:0.7}, effect:{type:'buff', elementSkillDamageMul:1.15}, desc:'靈力 > 70% 時元素技傷害 ×1.15'},
+    ],
+  },
+  break_resist:{
+    name:'韌脊', desc:'自身破勢條 > 50% 時受破勢 ×0.7',
+    category:'passive', hasProf:false,
+    moves:[
+      {id:'passive_break_resist', name:'韌脊', triggerKind:'state', predicate:{breakRatioAbove:0.5}, effect:{type:'buff', incomingBreakTakenMul:0.7}, desc:'自身破勢條 > 50% 時受破勢 ×0.7'},
     ],
   },
 };
@@ -564,6 +636,28 @@ function runStateMigrations(){
     syncActiveSkills(s);
     s.skillSlotSchemaV = SKILL_SLOT_SCHEMA_V;
     console.log('[E6-1 migration] skill slot schema v1: activeSkills mirror 建立, passiveSkills/mainTargetIdx 預留');
+  }
+  // ── E6-3:SKILL_DEFS schema 加雙軌欄位(skillDefSchemaV 旗標,不 bump DATA_VER)──
+  // 4 個 active 系列(heal/poison/charge 砍高階 moves,sword1 保留 4 階)
+  // + 加 dash/aegis(active 補)+ 8 個 passive 系列(雙軌)。
+  // 玩家 s.unlockedMoves 內可能存有被砍的 5 個 move id(heal_regen / heal_burst /
+  //   poison_burst / poison_cloud / charge_full),無人讀但占空間,順手清。
+  const SKILL_DEF_SCHEMA_V = 1;
+  if((s.skillDefSchemaV||0) < SKILL_DEF_SCHEMA_V){
+    const DEAD_MOVE_IDS = ['heal_regen','heal_burst','poison_burst','poison_cloud','charge_full'];
+    if(s.unlockedMoves){
+      let cleared = 0;
+      Object.keys(s.unlockedMoves).forEach(skillKey=>{
+        const arr = s.unlockedMoves[skillKey];
+        if(Array.isArray(arr)){
+          const before = arr.length;
+          s.unlockedMoves[skillKey] = arr.filter(id => !DEAD_MOVE_IDS.includes(id));
+          cleared += before - s.unlockedMoves[skillKey].length;
+        }
+      });
+      if(cleared > 0) console.log('[E6-3 migration] 清空 '+cleared+' 條 unlockedMoves 死碼 entry');
+    }
+    s.skillDefSchemaV = SKILL_DEF_SCHEMA_V;
   }
   save(s);
 }
