@@ -76,6 +76,7 @@ const WEAPON_TYPES = [
   {key:'spear',     name:'長槍',   icon:'🔱', slot:'both', craftParts:[{key:'blade',label:'槍頭',qty:6}, {key:'grip',label:'槍桿',qty:12}]},
   {key:'axe',       name:'雙手斧', icon:'🪓', slot:'both', craftParts:[{key:'blade',label:'斧刃',qty:8}, {key:'grip',label:'斧柄',qty:14}]},
   {key:'shield',    name:'盾牌',   icon:'🛡️', slot:'off',  craftParts:[{key:'blade',label:'盾面',qty:12},{key:'grip',label:'盾框',qty:4}]},
+  {key:'unarmed',   name:'徒手',   icon:'👊', slot:'main', craftParts:[]},  // E6-2a-i:空手 fallback,玩家不能 craft
 ];
 
 
@@ -239,6 +240,8 @@ const WEAPON_REGISTRY = [
   {key:'tower_shield',      name:'塔盾',     rarity:'rare',      weaponType:'shield',     baseDur:11, maxDur:15, baseEnhance:2, basePrice:1200,  stat:'',  source:['market'],         sellable:true},
   {key:'aegis',             name:'神盾',     rarity:'epic',      weaponType:'shield',     baseDur:10, maxDur:14, baseEnhance:4, basePrice:4200,  stat:'', source:['market','shop'],  sellable:true},
   {key:'world_guardian',    name:'守世盾',   rarity:'legendary', weaponType:'shield',     baseDur:9,  maxDur:13, baseEnhance:6, basePrice:13500, stat:'', source:[],                 sellable:true},
+  // ── E6-2a-i:空手 fallback(玩家武器槽空時用此)──
+  {key:'unarmed_fist',      name:'徒手',     rarity:'common',    weaponType:'unarmed',    baseDur:999,maxDur:999,baseEnhance:0, basePrice:0,     stat:'',  source:[],                 sellable:false},
 ];
 
 

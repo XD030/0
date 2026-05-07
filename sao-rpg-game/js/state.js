@@ -362,6 +362,10 @@ function initState(){
   // 結尾 syncActiveSkills 會建立。passiveSkills 純預留,目前無寫入點。
   if(!s.passiveSkills) s.passiveSkills = {0:null, 1:null, 2:null, 3:null};
   if(typeof s.mainTargetIdx !== 'number') s.mainTargetIdx = 0;
+  // E6-2a-i:戰鬥引擎旗標(預設 false 走舊 CARDS;ii 引擎落地後玩家手動開啟測試)
+  if(typeof s.useNewCombat !== 'boolean') s.useNewCombat = false;
+  // E6-2a-i:主動技 cooldown 槽位(寫入端 ii 接通,目前純預留)
+  if(!s.cooldowns) s.cooldowns = {0:0, 1:0, 2:0, 3:0};
   if(!s.skillProf)s.skillProf={};
   if(!s.unlockedMoves)s.unlockedMoves={};
   // 精髓系統(Phase 1):20 格陣列,長度不對時重建(保留有效格資料)
@@ -658,6 +662,16 @@ function runStateMigrations(){
       if(cleared > 0) console.log('[E6-3 migration] 清空 '+cleared+' 條 unlockedMoves 死碼 entry');
     }
     s.skillDefSchemaV = SKILL_DEF_SCHEMA_V;
+  }
+
+  // ── E6-2a-i:戰鬥引擎旗標 + cooldown 槽位(combatSchemaV 旗標,不 bump DATA_VER)──
+  // 純預留 schema,寫入端 ii 引擎落地後接通。useNewCombat 預設 false 走舊 CARDS。
+  const COMBAT_SCHEMA_V = 1;
+  if((s.combatSchemaV||0) < COMBAT_SCHEMA_V){
+    if(typeof s.useNewCombat !== 'boolean') s.useNewCombat = false;
+    if(!s.cooldowns) s.cooldowns = {0:0, 1:0, 2:0, 3:0};
+    s.combatSchemaV = COMBAT_SCHEMA_V;
+    console.log('[E6-2a-i migration] combat schema v1: useNewCombat=false / cooldowns 4 槽預留');
   }
   save(s);
 }

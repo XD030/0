@@ -89,6 +89,9 @@ const STATUS_DEF = {
   CHG: {name:'Charge 蓄力', abbr:'CHG', type:'buff',   color:'#ffffff', bg:'rgba(255,255,255,.08)',desc:'下次攻擊傷害 ×2'},
   PRT: {name:'Protect 守護',abbr:'PRT', type:'buff',   color:'#4499ff', bg:'rgba(68,153,255,.1)',  desc:'受傷害減少 35%'},
   HST: {name:'Haste 加速',  abbr:'HST', type:'buff',   color:'#00ffaa', bg:'rgba(0,255,170,.1)',   desc:'AGI +4，影響時間軸順序'},
+  // ── E6-2a-i:E6-3 SKILL_DEFS 雙軌系列引用的 STATUS(效果留 ii 接通)──
+  AEGIS:{name:'護身 Aegis', abbr:'AEG', type:'buff',   color:'#88ccff', bg:'rgba(136,204,255,.1)', desc:'受傷 ×0.6'},
+  RAGE: {name:'狂暴 Rage',  abbr:'RAG', type:'buff',   color:'#ff4422', bg:'rgba(255,68,34,.1)',   desc:'物攻 +30%'},
 };
 
 // 加狀態：{id, dur, stacks?}
@@ -472,11 +475,14 @@ function _calcEquipBonus(s){
 function _buildBattleChar(s){
   const c = s.character;
   const bonus = _calcEquipBonus(s);
-  const battleC = { level: c.level, hp: c.hp, stamina: c.stamina || 0 };
+  // E6-2a-i:加 spirit / break(雙資源 + 破勢條,maxXxx 動態算)
+  const battleC = { level: c.level, hp: c.hp, stamina: c.stamina || 0, spirit: c.spirit || 0, break: c.break || 0 };
   ATTRS.forEach(a=> battleC[a] = (c[a] || 0) + (bonus[a] || 0));
-  // E0:呼叫 derived.js 的 maxHp/maxStamina(簽名 (c) 1 參);maxMp 砍
+  // E0/E6-2a-i:呼叫 derived.js 的 maxXxx(簽名 (c) 1 參);maxMp 砍
   battleC.maxHp = maxHp(battleC);
   battleC.maxStamina = maxStamina(battleC);
+  battleC.maxSpirit = maxSpirit(battleC);
+  battleC.maxBreak = maxBreak(battleC);
   return battleC;
 }
 
