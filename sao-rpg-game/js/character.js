@@ -23,26 +23,9 @@
 
 /* ════════════════ 1. 等級 / EXP / HP 公式 ════════════════ */
 function expReq(lv){return lv*lv*5;}
-// E1 → E5-HP-v2:HP/MP 公式 = (100 + lv×50) / (10 + lv×5) base × 屬性 mul,緩成長
-// lv1: HP 100/150 base → 屬性 mul ~1.0~2.0 → 對應 1F 雜兵 100-150 HP base 區
-// lv10: HP 600 base → 對應 10F boss
-// lv100: HP 5100 base → 對應 100F final boss
-// MP 同步,1/10 比例
-// 同步點(改公式時全部要對齊):
-//   - state.js L240 init hp/mp(寫死 lv1+屬性0 結果)
-//   - state.js mp migration / hp clamp / mp clamp(內聯公式)
-//   - battle.js mockChar IIFE / _buildBattleChar(已重構成函數呼叫,不再內聯)
-function maxHp(lv, c){
-  const mul = 1 + (c['體魄']||0)*0.011 + (c['意志']||0)*0.004 + (c['肉體抗性']||0)*0.004 + (c['力量']||0)*0.002;
-  const base = 100 + (lv || 1) * 50;
-  return Math.round(base * mul);
-}
-
-function maxMp(lv, c){
-  const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
-  const base = 10 + (lv || 1) * 5;
-  return Math.round(base * mul);
-}
+// E0:maxHp 移到 derived.js(簽名 (c) 1 參,新公式 §4.1);
+//     maxMp 砍,改用 derived.js 的 maxStamina(c) / maxSpirit(c) 雙池;
+//     state.js initState / runStateMigrations 內聯公式跟 derived.js 對齊。
 function calcSlots(lv){return SLOT_UNLOCKS.filter(l=>lv>=l).length;}
 function nextSlot(lv){return SLOT_UNLOCKS.find(l=>l>lv)||null;}
 
@@ -62,7 +45,7 @@ function addExp(s, amt){
 }
 
 function applyHpPenalty(s, pct){
-  const mhp=maxHp(s.character.level, s.character);
+  const mhp=maxHp(s.character);
   let dmg=0;
   if(pct>=0.8) dmg=0;
   else if(pct>=0.5) dmg=Math.round(mhp*0.05);
@@ -167,38 +150,9 @@ let reserveAlloc={};
 ATTRS.forEach(a=>reserveAlloc[a]=0);
 let subAttrView=null; // null=主視圖, 'STR'/'VIT'/...=細屬性視圖
 
-// E1.5:屬性 tab 切換('phys' 肉體系 / 'mind' 精神系),預設肉體
-// 不存進存檔,重整網頁回預設
-let attrTab='phys';
-
-// E3.5:元素細節頁全域 ('fire'/'water'/.../null)
-let elemView=null;
-
-function setAttrTab(tab){
-  if(tab!=='phys' && tab!=='mind' && tab!=='elem') return;
-  attrTab=tab;
-  // 切 tab 時離開所有子屬性頁 / 元素細節頁
-  subAttrView=null;
-  elemView=null;
-  if(typeof renderReserve==='function') renderReserve();
-  if(typeof renderReserveWithPrefix==='function') renderReserveWithPrefix('ap-');
-  ['phys','mind','elem'].forEach(t=>{
-    document.getElementById('r-attr-tab-'+t)?.classList.toggle('active', t===tab);
-    document.getElementById('ap-attr-tab-'+t)?.classList.toggle('active', t===tab);
-  });
-}
-
-function setElemView(elem){
-  if(!ELEM_DETAIL[elem]) return;
-  elemView=elem;
-  if(typeof renderReserve==='function') renderReserve();
-  if(typeof renderReserveWithPrefix==='function') renderReserveWithPrefix('ap-');
-}
-function closeElemView(){
-  elemView=null;
-  if(typeof renderReserve==='function') renderReserve();
-  if(typeof renderReserveWithPrefix==='function') renderReserveWithPrefix('ap-');
-}
+// E0:U1 砍 phys/mind tab(8 屬性 1 個 8 邊形 radar);U2 砍元素 tab(無 sense/resist 衍生值)
+// → setAttrTab / attrTab / setElemView / closeElemView / elemView 整套刪
+// → index.html / panel.js 對應的 r-attr-tab-phys/mind/elem 與 ap-attr-tab-phys/mind/elem 元素也砍
 
 
 /* ════════════════ 4. 屬性分配互動 ════════════════ */
@@ -228,7 +182,7 @@ function allocate(attr){
   if(!s.character.pendingPoints) return;
   s.character[attr]++;
   s.character.pendingPoints--;
-  const nm=maxHp(s.character.level, s.character);
+  const nm=maxHp(s.character);
   if(s.character.hp>nm) s.character.hp=nm;
   save(s);
   if(currentAdvPage==='reserve') renderReserve();
@@ -253,7 +207,7 @@ function closeSubAttr(p){
 
 /* ════════════════ 5. 角色狀態頁渲染(舊主頁,目前 page-status 沿用) ════════════════ */
 function renderStatus(){
-  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c);
+  const s=initState(); const c=s.character; const mhp=maxHp(c);
   const nameEl=document.getElementById('s-name'); if(nameEl) nameEl.textContent=c.name;
   const lvEl2=document.getElementById('s-level'); if(lvEl2) lvEl2.textContent=c.level;
   const hpBar=document.getElementById('s-hp-bar'); const hpEl=document.getElementById('s-hp');
@@ -297,16 +251,22 @@ function switchGear(tab){
 
 /* ════════════════ 6. 冒險面板狀態頁渲染 ════════════════ */
 function renderReserve(){
-  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c);
+  const s=initState(); const c=s.character; const mhp=maxHp(c);
   document.getElementById('r-name').textContent=c.name;
   document.getElementById('r-level').textContent=c.level;
   document.getElementById('r-hp-bar').style.width=Math.min(100,(c.hp/mhp)*100)+'%';
   document.getElementById('r-hp').textContent=`${c.hp}/${mhp}`;
-  const mmp=maxMp(c.level, c);
-  const _rmpb=document.getElementById('r-mp-bar');
-  if(_rmpb) _rmpb.style.width=Math.min(100,((c.mp||0)/mmp)*100)+'%';
-  const _rmp=document.getElementById('r-mp');
-  if(_rmp) _rmp.textContent=(c.mp||0)+'/'+mmp;
+  // E0:雙池 — 體力(stamina) / 靈力(spirit)取代舊單一 mp
+  const mst=maxStamina(c);
+  const _rstb=document.getElementById('r-stamina-bar');
+  if(_rstb) _rstb.style.width=Math.min(100,((c.stamina||0)/mst)*100)+'%';
+  const _rst=document.getElementById('r-stamina');
+  if(_rst) _rst.textContent=(c.stamina||0)+'/'+mst;
+  const msp=maxSpirit(c);
+  const _rspb=document.getElementById('r-spirit-bar');
+  if(_rspb) _rspb.style.width=Math.min(100,((c.spirit||0)/msp)*100)+'%';
+  const _rsp=document.getElementById('r-spirit');
+  if(_rsp) _rsp.textContent=(c.spirit||0)+'/'+msp;
   const needed=c.level<100?expReq(c.level):1;
   document.getElementById('r-exp-bar').style.width=(c.level>=100?100:Math.min(100,(c.exp/needed)*100))+'%';
   document.getElementById('r-exp').textContent=c.level>=100?'MAX':`${c.exp}/${needed}`;
@@ -339,7 +299,7 @@ function renderReserve(){
     head.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 4px;cursor:pointer;border-bottom:1px solid rgba(200,220,240,.15);margin-bottom:8px;';
     head.innerHTML =
       '<span style="color:var(--cyan);font-size:14px;">←</span>'+
-      '<span style="color:'+(ATTR_COLOR[subAttrView]||'#fff')+';font-weight:bold;font-size:13px;">'+(ATTR_DISPLAY_NAME[subAttrView]||subAttrView)+'</span>'+
+      '<span style="color:'+(ATTR_COLOR[subAttrView]||'#fff')+';font-weight:bold;font-size:13px;">'+(subAttrView)+'</span>'+
       '<span style="color:#888;font-size:10px;">影響的衍生值</span>';
     head.onclick = ()=>closeSubAttr();
     al.appendChild(head);
@@ -374,43 +334,15 @@ function renderReserve(){
   if(tabsEl) tabsEl.style.display='';
   if(rSvg && rSvg.parentElement) rSvg.parentElement.style.display='';
 
-  // E3.5:元素 tab 主視圖 — 列 9 個元素 row,沒雷達圖
-  if(attrTab === 'elem'){
-    if(rSvg && rSvg.parentElement) rSvg.parentElement.style.display='none';
-    document.getElementById('r-confirm-btn').style.display='none';
-
-    ELEM_KEYS.forEach(elemKey=>{
-      const def = ELEM_DETAIL[elemKey];
-      const senseVal = DERIVED_DEFS[def.sense].fn(c);
-      const resistVal = DERIVED_DEFS[def.resist].fn(c);
-      const aux = def.detail[0];
-      const auxVal = aux ? aux.fn(c) : 0;
-      const auxLabel = aux ? aux.label : '';
-      const row = document.createElement('div');
-      row.className='r-attr-row';
-      row.style.cssText='margin:0;padding:0;';
-      row.innerHTML =
-        '<div class="r-attr-top" style="padding:3px 0;">'+
-          '<span class="r-attr-key" style="color:'+def.color+';font-size:13px;font-weight:bold;">'+def.label+'</span>'+
-          '<span class="r-attr-num" style="font-size:12px;">'+
-            (aux ? ('<span style="color:#aaa;">'+auxLabel+' </span><span style="color:'+def.color+';opacity:0.6;">'+auxVal.toFixed(0)+'</span><span style="color:#555;"> / </span>') : '')+
-            '<span style="color:#aaa;">感應 </span><span style="color:'+def.color+';">'+senseVal.toFixed(1)+'%</span>'+
-            '<span style="color:#555;"> / </span>'+
-            '<span style="color:#aaa;">抵抗 </span><span style="color:'+def.color+';opacity:0.7;">'+resistVal.toFixed(1)+'%</span>'+
-          '</span>'+
-        '</div>';
-      al.appendChild(row);
-    });
-    return;
-  }
+  // E0:U2 元素 tab 砍(elementSense / elementResist 衍生值移除,元素抗性合到 elementMitigation)
 
   if(rSvg){
     rSvg.style.cursor='default';
     rSvg.onclick=null;
     rSvg.parentElement.querySelectorAll('.sub-radar-label').forEach(el=>el.remove());
   }
-  // E1.5:當前 tab 對應的 6 個屬性
-  const tabAttrs = (attrTab==='mind') ? ATTRS_MIND : ATTRS_PHYS;
+  // E0:U1 phys/mind tab 砍 → tabAttrs 直接 = ATTRS(8 個),drawRadar2 動態 n
+  const tabAttrs = ATTRS;
   drawRadar2(tabAttrs.map(a=>(c[a]||0)+(equipBonus[a]||0)+(reserveAlloc[a]||0)), tabAttrs);
   const maxVal=50;
   const totalAllocated=Object.values(reserveAlloc).reduce((s,v)=>s+v, 0);
@@ -427,7 +359,7 @@ function renderReserve(){
     const display=val+pending;
     const pct=Math.min(100, Math.round((display/maxVal)*100));
     const color=ATTR_COLOR[attr]||'#fff';
-    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    const label=attr;
     const row=document.createElement('div'); row.className='r-attr-row';
     if(hasPts){
       row.innerHTML=
@@ -505,15 +437,19 @@ function renderReserve(){
 /* ADV 面板用的 renderReserve(可指定前綴,目前只有 r- 在用,但保留多前綴介面) */
 function renderReserveWithPrefix(p){
   const g=id=>document.getElementById(p+id);
-  const s=initState(); const c=s.character; const mhp=maxHp(c.level, c);
+  const s=initState(); const c=s.character; const mhp=maxHp(c);
   if(!g('name')) return;
   g('name').textContent=c.name;
   g('level').textContent=c.level;
   g('hp-bar').style.width=Math.min(100,(c.hp/mhp)*100)+'%';
   g('hp').textContent=c.hp+'/'+mhp;
-  const mmp=maxMp(c.level, c);
-  if(g('mp-bar')) g('mp-bar').style.width=Math.min(100,((c.mp||0)/mmp)*100)+'%';
-  if(g('mp')) g('mp').textContent=(c.mp||0)+'/'+mmp;
+  // E0:雙池 — 體力(stamina) / 靈力(spirit)取代舊單一 mp
+  const mst=maxStamina(c);
+  if(g('stamina-bar')) g('stamina-bar').style.width=Math.min(100,((c.stamina||0)/mst)*100)+'%';
+  if(g('stamina')) g('stamina').textContent=(c.stamina||0)+'/'+mst;
+  const msp=maxSpirit(c);
+  if(g('spirit-bar')) g('spirit-bar').style.width=Math.min(100,((c.spirit||0)/msp)*100)+'%';
+  if(g('spirit')) g('spirit').textContent=(c.spirit||0)+'/'+msp;
   const needed=c.level<100?expReq(c.level):1;
   g('exp-bar').style.width=(c.level>=100?100:Math.min(100,(c.exp/needed)*100))+'%';
   g('exp').textContent=c.level>=100?'MAX':c.exp+'/'+needed;
@@ -544,7 +480,7 @@ function renderReserveWithPrefix(p){
     head.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 4px;cursor:pointer;border-bottom:1px solid rgba(200,220,240,.15);margin-bottom:8px;';
     head.innerHTML =
       '<span style="color:var(--cyan);font-size:14px;">←</span>'+
-      '<span style="color:'+(ATTR_COLOR[subAttrView]||'#fff')+';font-weight:bold;font-size:13px;">'+(ATTR_DISPLAY_NAME[subAttrView]||subAttrView)+'</span>'+
+      '<span style="color:'+(ATTR_COLOR[subAttrView]||'#fff')+';font-weight:bold;font-size:13px;">'+(subAttrView)+'</span>'+
       '<span style="color:#888;font-size:10px;">影響的衍生值</span>';
     head.onclick = ()=>closeSubAttr(p);
     al.appendChild(head);
@@ -579,38 +515,10 @@ function renderReserveWithPrefix(p){
   if(tabsEl) tabsEl.style.display='';
   if(pSvg && pSvg.parentElement) pSvg.parentElement.style.display='';
 
-  // E3.5:元素 tab 主視圖(prefix 版)
-  if(attrTab === 'elem'){
-    if(pSvg && pSvg.parentElement) pSvg.parentElement.style.display='none';
-    if(g('confirm-btn')) g('confirm-btn').style.display='none';
+  // E0:U2 元素 tab 砍(prefix 版同上)
 
-    ELEM_KEYS.forEach(elemKey=>{
-      const def = ELEM_DETAIL[elemKey];
-      const senseVal = DERIVED_DEFS[def.sense].fn(c);
-      const resistVal = DERIVED_DEFS[def.resist].fn(c);
-      const aux = def.detail[0];
-      const auxVal = aux ? aux.fn(c) : 0;
-      const auxLabel = aux ? aux.label : '';
-      const row = document.createElement('div');
-      row.className='r-attr-row';
-      row.style.cssText='margin:0;padding:0;';
-      row.innerHTML =
-        '<div class="r-attr-top" style="padding:3px 0;">'+
-          '<span class="r-attr-key" style="color:'+def.color+';font-size:13px;font-weight:bold;">'+def.label+'</span>'+
-          '<span class="r-attr-num" style="font-size:12px;">'+
-            (aux ? ('<span style="color:#aaa;">'+auxLabel+' </span><span style="color:'+def.color+';opacity:0.6;">'+auxVal.toFixed(0)+'</span><span style="color:#555;"> / </span>') : '')+
-            '<span style="color:#aaa;">感應 </span><span style="color:'+def.color+';">'+senseVal.toFixed(1)+'%</span>'+
-            '<span style="color:#555;"> / </span>'+
-            '<span style="color:#aaa;">抵抗 </span><span style="color:'+def.color+';opacity:0.7;">'+resistVal.toFixed(1)+'%</span>'+
-          '</span>'+
-        '</div>';
-      al.appendChild(row);
-    });
-    return;
-  }
-
-  // E1.5:當前 tab 對應的 6 個屬性
-  const tabAttrs = (attrTab==='mind') ? ATTRS_MIND : ATTRS_PHYS;
+  // E0:U1 phys/mind tab 砍 → tabAttrs 直接 = ATTRS(8 個),drawRadar2 動態 n
+  const tabAttrs = ATTRS;
   drawRadar2WithPrefix(p, tabAttrs.map(a=>(c[a]||0)+(equipBonus[a]||0)+(reserveAlloc[a]||0)), tabAttrs);
   if(pSvg){
     pSvg.style.cursor='default'; pSvg.onclick=null;
@@ -629,7 +537,7 @@ function renderReserveWithPrefix(p){
     const display=val+pending;
     const pct=Math.min(100, Math.round((display/50)*100));
     const color=ATTR_COLOR[attr]||'#fff';
-    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    const label=attr;
     const row=document.createElement('div'); row.className='r-attr-row';
     if(hasPts){
       row.innerHTML='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'+
@@ -741,7 +649,8 @@ function drawRadar(vals){
 function drawRadar2(vals, attrs){
   const svg=document.getElementById('r-radar-svg');
   if(!svg) return;
-  const cx=68, cy=68, r=48, n=6;
+  // E0:n 從寫死 6 改成動態(支援 8 屬性 8 邊形 + 兼容舊 6 邊形 caller)
+  const cx=68, cy=68, r=48, n=attrs.length;
   const mv=Math.max(...vals, 10);
   const angle=i=>i*2*Math.PI/n-Math.PI/2;
   const pt=(i, ratio)=>[cx+r*ratio*Math.cos(angle(i)), cy+r*ratio*Math.sin(angle(i))];
@@ -759,7 +668,7 @@ function drawRadar2(vals, attrs){
   attrs.forEach((attr, i)=>{
     const [x,y]=pt(i, 1.32);
     const color=ATTR_COLOR[attr]||'#fff';
-    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    const label=attr;
     // E1.5:label 是中文(2-3 字),不再用 letter-spacing(中文字會被拉開)
     h+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,Noto Sans TC,monospace" font-size="10" fill="${color}" style="cursor:pointer;" onclick="openSubAttr('${attr}')">${label}</text>`;
   });
@@ -770,7 +679,8 @@ function drawRadar2(vals, attrs){
 function drawRadar2WithPrefix(p, vals, attrs){
   const svg=document.getElementById(p+'radar-svg');
   if(!svg) return;
-  const cx=68, cy=68, r=48, n=6;
+  // E0:n 從寫死 6 改成動態(支援 8 屬性 8 邊形 + 兼容舊 6 邊形 caller)
+  const cx=68, cy=68, r=48, n=attrs.length;
   const mv=Math.max(...vals, 10);
   const angle=i=>i*2*Math.PI/n-Math.PI/2;
   const pt=(i, ratio)=>[cx+r*ratio*Math.cos(angle(i)), cy+r*ratio*Math.sin(angle(i))];
@@ -788,7 +698,7 @@ function drawRadar2WithPrefix(p, vals, attrs){
   attrs.forEach((attr, i)=>{
     const [x,y]=pt(i, 1.32);
     const color=ATTR_COLOR[attr]||'#fff';
-    const label=ATTR_DISPLAY_NAME[attr]||attr;
+    const label=attr;
     h+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="Share Tech Mono,Noto Sans TC,monospace" font-size="10" fill="${color}" style="cursor:pointer;" onclick="openSubAttrPrefix('${p}','${attr}')">${label}</text>`;
   });
   svg.innerHTML=h;

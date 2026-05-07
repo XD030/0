@@ -275,15 +275,15 @@ let mockChar = (()=>{
     const c = s.character || {};
     const battleC = { level: c.level || 1, hp: 0 };
     ATTRS.forEach(a=> battleC[a] = c[a] || 0);
-    // E5-HP-v2:呼叫 character.js 的 maxHp/maxMp,消除內聯公式重複
-    battleC.maxHp = maxHp(battleC.level, battleC);
-    battleC.maxMp = maxMp(battleC.level, battleC);
+    // E0:呼叫 derived.js 的 maxHp/maxStamina(簽名 (c) 1 參);maxMp 砍,雙池 stamina/spirit
+    battleC.maxHp = maxHp(battleC);
+    battleC.maxStamina = maxStamina(battleC);
     battleC.hp = c.hp || battleC.maxHp;
-    battleC.mp = c.mp || 0;
+    battleC.stamina = c.stamina || 0;
     return battleC;
   }catch{
-    // E5-HP-v2:fallback 對應 lv1 + 屬性 0 → maxHp 150 / maxMp 15
-    const fb = { level:1, hp:150, maxHp:150, mp:15, maxMp:15 };
+    // E0:fallback 對應 lv1 + 屬性 0 → maxHp 168 / maxStamina 46
+    const fb = { level:1, hp:168, maxHp:168, stamina:46, maxStamina:46 };
     ATTRS.forEach(a=> fb[a] = 0);
     return fb;
   }
@@ -472,11 +472,11 @@ function _calcEquipBonus(s){
 function _buildBattleChar(s){
   const c = s.character;
   const bonus = _calcEquipBonus(s);
-  const battleC = { level: c.level, hp: c.hp, mp: c.mp || 0 };
+  const battleC = { level: c.level, hp: c.hp, stamina: c.stamina || 0 };
   ATTRS.forEach(a=> battleC[a] = (c[a] || 0) + (bonus[a] || 0));
-  // E5-HP-v2:呼叫 character.js 的 maxHp/maxMp,消除內聯公式重複
-  battleC.maxHp = maxHp(battleC.level, battleC);
-  battleC.maxMp = maxMp(battleC.level, battleC);
+  // E0:呼叫 derived.js 的 maxHp/maxStamina(簽名 (c) 1 參);maxMp 砍
+  battleC.maxHp = maxHp(battleC);
+  battleC.maxStamina = maxStamina(battleC);
   return battleC;
 }
 
@@ -735,10 +735,11 @@ function renderAll(){
   if(el('bp-p-cur'))el('bp-p-cur').textContent=player.hp;
   if(el('bp-p-max'))el('bp-p-max').textContent='/'+player.maxHp;
   if(el('bp-p-bar'))el('bp-p-bar').style.width=Math.max(0,player.hp/player.maxHp*100)+'%';
-  const pmp=player.mp||0, pmaxMp=player.maxMp||1;
-  if(el('bp-p-mp-cur'))el('bp-p-mp-cur').textContent=pmp;
-  if(el('bp-p-mp-max'))el('bp-p-mp-max').textContent=pmaxMp;
-  if(el('bp-p-mp-bar'))el('bp-p-mp-bar').style.width=Math.min(100,(pmp/pmaxMp)*100)+'%';
+  // E0:雙池 mp → stamina(E6-3 才分 sp/mp);bp-p-mp-* DOM id 沿用,index.html 戰鬥內 bar 留 E6-4 重做時再改
+  const pstm=player.stamina||0, pmaxStm=player.maxStamina||1;
+  if(el('bp-p-mp-cur'))el('bp-p-mp-cur').textContent=pstm;
+  if(el('bp-p-mp-max'))el('bp-p-mp-max').textContent=pmaxStm;
+  if(el('bp-p-mp-bar'))el('bp-p-mp-bar').style.width=Math.min(100,(pstm/pmaxStm)*100)+'%';
   // 玩家僵直條
   const ps=el('bp-p-stagger');
   if(ps){const ms=calcMaxStagger(player);ps.style.width=Math.min(100,(player.stagger||0)/ms*100)+'%';ps.className='bp-stagger-bar'+(player.stunned?' full':'');}
@@ -1069,7 +1070,7 @@ function makeCardHTML(c, locked=false){
   const isSel=selectedCard?.id===c.id;
   const cost=c.cost||0;
   const recover=c.recover||0;
-  const noMp = battle && cost>0 && battle.player.mp < cost;
+  const noMp = battle && cost>0 && battle.player.stamina < cost;  // E0:mp → stamina;變數名沿用
   const lockStyle=(locked||noMp)?'opacity:0.4;pointer-events:none;':'';
   const iconHTML=`<div class="card-icon-wrap">
     <img class="card-icon-img" src="${IMG[c.imgKey]||''}" alt="${c.name}"
@@ -1213,19 +1214,19 @@ function executePlayerCard(card){
     return;
   }
 
-  // ── MP 檢查與扣除(Phase α 能量制)──
+  // ── 體力(stamina)檢查與扣除(E0:mp→stamina;E6-3 才分 sp/mp)──
   const cardCost = card.cost || 0;
-  if(player.mp < cardCost){
-    showToast(`// MP 不足 (需 ${cardCost})`);
+  if(player.stamina < cardCost){
+    showToast(`// 體力不足 (需 ${cardCost})`);
     selectedCard = null;
     hideConfirm();
     renderCards();
     return;
   }
-  player.mp = Math.max(0, player.mp - cardCost);
+  player.stamina = Math.max(0, player.stamina - cardCost);
   const cardRecover = card.recover || 0;
   if(cardRecover > 0){
-    player.mp = Math.min(player.maxMp, player.mp + cardRecover);
+    player.stamina = Math.min(player.maxStamina, player.stamina + cardRecover);
   }
 
   const s=initState();
@@ -1506,10 +1507,10 @@ function endBattle(result){
   battle.phase='end';
   hideConfirm(); // E4-1b:確認按鈕回 disabled,避免戰鬥結束殘留 enabled 狀態
   mockChar.hp = Math.max(0, battle.player.hp);
-  // 寫回主檔 HP / MP
+  // E0:寫回主檔 HP / 體力(stamina);spirit / break 戰鬥內未動,不寫回
   const s=initState();
   s.character.hp=mockChar.hp;
-  s.character.mp=Math.max(0, Math.min(battle.player.maxMp, battle.player.mp||0));
+  s.character.stamina=Math.max(0, Math.min(battle.player.maxStamina, battle.player.stamina||0));
   save(s);
   const el=document.getElementById('battle-result');
   const title=document.getElementById('result-title');
@@ -1558,12 +1559,15 @@ function endBattle(result){
   } else if(result==='flee'){
     title.textContent='ESCAPED';title.className='result-title win';detail.textContent='成功逃脫！';
   } else {
-    // 死亡：復活回滿血，直接關閉戰鬥回選層
+    // 死亡：復活回滿狀態(E0:雙池 stamina/spirit + break 一起 reset)
     const rs=initState();
-    const mhp=maxHp(rs.character.level,rs.character);
-    const mmp=maxMp(rs.character.level,rs.character);
+    const mhp=maxHp(rs.character);
+    const mst=maxStamina(rs.character);
+    const msp=maxSpirit(rs.character);
     rs.character.hp=mhp;
-    rs.character.mp=mmp;
+    rs.character.stamina=mst;
+    rs.character.spirit=msp;
+    rs.character.break=0;
     save(rs);
     mockChar.hp=mhp;
     battle=null;
@@ -1718,15 +1722,15 @@ function updateMapHp(){
   if(cur)cur.textContent=c.hp;
   if(mx)mx.textContent='/'+mhp;
   if(bar)bar.style.width=pct+'%';
-  // MP 條同步(從存檔取最新值)
+  // E0:體力(stamina)條同步;map-mp-* DOM id 沿用,index.html 內未改,E6-4 UI 整套換時再改
   const s=initState();
-  const mp=s.character.mp||0, mmp=maxMp(s.character.level, s.character);
+  const stm=s.character.stamina||0, mstm=maxStamina(s.character);
   const mcur=document.getElementById('map-mp-cur');
   const mmax=document.getElementById('map-mp-max');
   const mbar=document.getElementById('map-mp-bar');
-  if(mcur)mcur.textContent=mp;
-  if(mmax)mmax.textContent='/'+mmp;
-  if(mbar)mbar.style.width=Math.min(100,(mp/mmp)*100)+'%';
+  if(mcur)mcur.textContent=stm;
+  if(mmax)mmax.textContent='/'+mstm;
+  if(mbar)mbar.style.width=Math.min(100,(stm/mstm)*100)+'%';
 }
 
 // ── 渲染格子地圖 ──

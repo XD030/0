@@ -19,26 +19,23 @@
 const SK='wxrpg6';
 const DATA_VER=4;
 
-// ── 主屬性(12 個,中文 key)──
-// 肉體系 6:力量 / 敏捷 / 反應 / 體魄 / 技巧 / 肉體抗性
-// 精神系 6:靈力 / 理智 / 專注 / 意志 / 感知 / 親和
-// E5 之前雷達圖鎖死,屬性 row 仍依此順序顯示
-const ATTRS=['力量','敏捷','反應','體魄','技巧','肉體抗性','靈力','理智','專注','意志','感知','親和'];
+// ── 主屬性(8 個,中文 key)── E0:12→8 屬性翻新
+// 肉體系 6:力量 / 技巧 / 敏捷 / 反應 / 耐力 / 抗性
+// 精神系 2:精神 / 感知
+// 舊「體魄→耐力」「肉體抗性→抗性」rename;舊「靈力/理智/專注/意志/親和」5 合 1→精神
+const ATTRS=['力量','技巧','敏捷','反應','耐力','抗性','精神','感知'];
 const ATTR_COLOR={
-  // 肉體系暖色
-  '力量':'#ff7040', '敏捷':'#00ffcc', '反應':'#ffcc44',
-  '體魄':'#00c8ff', '技巧':'#ffaa33', '肉體抗性':'#bb8866',
-  // 精神系冷色
-  '靈力':'#cc88ff', '理智':'#88aaff', '專注':'#44ddff',
-  '意志':'#dde8ff', '感知':'#ff88cc', '親和':'#ffaaee'
+  // 肉體系 6 暖色
+  '力量':'#ff7040', '技巧':'#ffaa33', '敏捷':'#00ffcc', '反應':'#ffcc44',
+  '耐力':'#00c8ff', '抗性':'#bb8866',
+  // 精神系 2 冷色
+  '精神':'#cc88ff', '感知':'#ff88cc'
 };
-// 肉體系 / 精神系分群(E5 雷達圖切換 toggle 用,E1 暫不使用)
-const ATTRS_PHYS=['力量','敏捷','反應','體魄','技巧','肉體抗性'];
-const ATTRS_MIND=['靈力','理智','專注','意志','感知','親和'];
+// 肉體系 / 精神系分群(E0 起 phys/mind tab 砍,8 屬性同一視圖,但常數沿用給 derived.js ATTR_INFLUENCES 用)
+const ATTRS_PHYS=['力量','技巧','敏捷','反應','耐力','抗性'];   // 6
+const ATTRS_MIND=['精神','感知'];                                 // 2
 
-// E1.5:屬性顯示名(只覆蓋需要縮短/改寫的 key,其他 fallback 到 attr 本身)
-// 程式內仍用「肉體抗性」當 key(不影響 migration / 衍生值公式 / 裝備字串解析)
-const ATTR_DISPLAY_NAME={'肉體抗性':'抗性'};
+// E0:ATTR_DISPLAY_NAME 砍 — 新版「抗性」直接是 key,不需要 alias。character.js 6 處引用在 E0-3 改成直接顯示 attr。
 
 const LIFE_ATTRS=['HUNT','GATH','MINE','CRFT','COOK'];
 const LIFE_COLOR={HUNT:'#ff6644',GATH:'#88dd44',MINE:'#aaaaaa',CRFT:'#ffaa33',COOK:'#ff88aa'};
@@ -237,9 +234,15 @@ function initState(){
     s={ver:DATA_VER};
   }
   if(!s.character){
-    // E5-HP-v2:lv1 + 屬性 0 → maxHp = round((100+50)*1) = 150 / maxMp = round((10+5)*1) = 15
-    // 改公式時 character.js maxHp/maxMp + 下方 mp/hp clamp migration 都要同步
-    s.character={name:'無名俠客',level:1,exp:0,hp:150,mp:15,pendingPoints:0,skillSlots:2};
+    // E0:雙資源(stamina/spirit)+ 破勢(break)取代舊 mp;maxXxx 動態算不存欄位
+    // lv1 + 8 屬性 0 → maxHp=round((120+48)*1)=168 / maxStamina=round((40+6)*1)=46 / maxSpirit=round((35+7)*1)=42
+    // 公式跟 derived.js maxHp/maxStamina/maxSpirit 對齊,改要兩邊同步
+    // pendingPoints:3 對齊 E0 doc §1「lv1 起始 +3 點」
+    s.character={
+      name:'無名俠客', level:1, exp:0,
+      hp:168, stamina:46, spirit:42, break:0,
+      pendingPoints:3, skillSlots:2
+    };
     ATTRS.forEach(a=>s.character[a]=0);
   }
   // 生活技能等級系統(獨立於戰鬥屬性)
@@ -329,25 +332,48 @@ function runStateMigrations(){
   if(!s.lifeSkills.GATH)s.lifeSkills.GATH={lv:1,exp:0};
   LIFE_ATTRS.forEach(a=>s.character[a]=0);
 
-  // ── E1:6 主屬性 → 12 主屬性 schema 遷移(attrSchemaV 旗標,不 bump DATA_VER)──
-  // 舊存檔的 STR/VIT/DEX/AGI/INT/LUK 點數全部退回 pendingPoints,12 個新中文 key 補 0。
-  // 玩家進入後可在屬性分配頁重配。
-  const ATTR_SCHEMA_V = 1;
-  if(s.character && (s.character.attrSchemaV||0) < ATTR_SCHEMA_V){
-    const OLD_KEYS = ['STR','VIT','DEX','AGI','INT','LUK'];
+  // ── E0:屬性 schema V2 — 12 屬性 → 8 屬性 + 雙資源 + 破勢(attrSchemaV2 旗標)──
+  // V0(6 英文 STR/VIT/...)、V1(12 中文)存檔都吞,refund 全部點數到 pendingPoints。
+  // 不 bump DATA_VER。公式跟 derived.js maxStamina/maxSpirit 對齊,改要兩邊同步。
+  // 舊 V1 migration 已併入 OLD_KEYS;舊 attrSchemaV 旗標欄位保留不刪(歷史紀錄)。
+  const ATTR_SCHEMA_V2 = 1;
+  if(s.character && (s.character.attrSchemaV2||0) < ATTR_SCHEMA_V2){
+    const c = s.character;
+    const OLD_KEYS = [
+      // V0(6 英文,E1 之前)
+      'STR','VIT','DEX','AGI','INT','LUK',
+      // V1(12 中文,E1-E5)
+      '力量','敏捷','反應','體魄','技巧','肉體抗性',
+      '靈力','理智','專注','意志','感知','親和'
+    ];
     let refund = 0;
     OLD_KEYS.forEach(k=>{
-      if(typeof s.character[k] === 'number'){
-        refund += s.character[k];
-        delete s.character[k];
+      if(typeof c[k] === 'number'){
+        refund += c[k];
+        delete c[k];
       }
     });
-    s.character.pendingPoints = (s.character.pendingPoints||0) + refund;
-    ATTRS.forEach(a=>{
-      if(typeof s.character[a] !== 'number') s.character[a]=0;
-    });
-    s.character.attrSchemaV = ATTR_SCHEMA_V;
-    if(refund > 0) console.log('[E1 migration] 舊屬性退回 '+refund+' 點到 pendingPoints');
+    c.pendingPoints = (c.pendingPoints||0) + refund;
+    // 新 8 屬性 raw 補 0(同名「力量/敏捷/反應/技巧/感知」5 個 V1 已 delete,從 0 重設)
+    ATTRS.forEach(a=>{ if(typeof c[a] !== 'number') c[a]=0; });
+
+    // 雙池:mp 退場,stamina/spirit 進場;break 進場
+    delete c.mp;
+    delete c.maxMp;
+    const lv = c.level || 1;
+    if(typeof c.stamina !== 'number') c.stamina = Math.round((40 + lv*6) * 1);  // 屬性 0 → mul=1
+    if(typeof c.spirit  !== 'number') c.spirit  = Math.round((35 + lv*7) * 1);
+    if(typeof c.break   !== 'number') c.break   = 0;
+    // hp 不動(讓戰鬥中關頁面的 HP 保留)
+
+    c.attrSchemaV2 = ATTR_SCHEMA_V2;
+    if(refund > 0) console.log('[E0 migration] 舊屬性退回 '+refund+' 點到 pendingPoints(含 V0/V1 殘留)');
+
+    // 防線:V2 跑完後 character 上不該有任何 OLD_KEYS 殘留
+    const stillThere = OLD_KEYS.filter(k => typeof c[k] === 'number');
+    if(stillThere.length > 0){
+      console.warn('[E0 migration] V2 跑完仍有舊屬性殘留:', stillThere, '— 可能是 OLD_KEYS 漏列');
+    }
   }
 
   // ── E2-B:bag/equipment instance 的舊 stat 字串清空(attrStringSchemaV 旗標)──
@@ -484,35 +510,9 @@ function runStateMigrations(){
     s.essences = Array(ESSENCE_MAX).fill(null).map((_, i)=> old[i] || null);
   }
 
-  // ── MP 欄位 migration:舊存檔補上,以當前精神系屬性算 maxMp(E1 → E5-HP-v2)──
-  // 公式 §7.2 + lv 縮放:(10 + lv×5) × (1 + 靈力×0.011 + 理智×0.004 + 專注×0.004 + 親和×0.002)
-  // 公式內聯避免依賴 character.js(載入順序 state.js 先);改公式記得 character.js / battle.js / 上方 init 都要同步
-  if(s.character && (typeof s.character.mp !== 'number' || s.character.mp < 0)){
-    const c=s.character;
-    const lv = c.level || 1;
-    const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
-    s.character.mp = Math.round((10 + lv * 5) * mul);
-  }
-
-  // ── HP 欄位 clamp:舊存檔 hp 用舊基底 1000,改公式後可能 > 新 maxHp 破表,clamp(E5-HP-v2)──
-  // 用 typeof 檢查避免 §10 雷(hp=0 是死亡狀態,不該觸發 fallback)
-  if(s.character && typeof s.character.hp === 'number'){
-    const c=s.character;
-    const lv = c.level || 1;
-    const mul = 1 + (c['體魄']||0)*0.011 + (c['意志']||0)*0.004 + (c['肉體抗性']||0)*0.004 + (c['力量']||0)*0.002;
-    const newMaxHp = Math.round((100 + lv * 50) * mul);
-    if(s.character.hp > newMaxHp) s.character.hp = newMaxHp;
-  }
-
-  // ── MP 欄位 clamp:舊存檔 mp 用舊基底 100,改公式後新基底 10+lv×5,可能破表(E5-HP-v2)──
-  // 同上 §10:用 typeof 檢查不用 ||,mp=0 是合法狀態不該觸發 fallback
-  if(s.character && typeof s.character.mp === 'number'){
-    const c=s.character;
-    const lv = c.level || 1;
-    const mul = 1 + (c['靈力']||0)*0.011 + (c['理智']||0)*0.004 + (c['專注']||0)*0.004 + (c['親和']||0)*0.002;
-    const newMaxMp = Math.round((10 + lv * 5) * mul);
-    if(s.character.mp > newMaxMp) s.character.mp = newMaxMp;
-  }
+  // ── E0:舊 hp/mp clamp migration 砍(原 E5-HP-v2 殘留)──
+  // 理由:V2 後 c.mp 已 delete,clamp 變 no-op;hp clamp 用舊屬性算 mul=1 會錯誤砍 hp(回退 bug)。
+  // git history 撈得回(8416b59 之前的版本)。
 
   // ── Task A:確保製造佇列 / 待命名區欄位存在(不 bump DATA_VER)──
   if(!s.crftQueue) s.crftQueue=[];
